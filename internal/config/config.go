@@ -4,7 +4,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -315,7 +314,7 @@ const DeviceEnv = "DEVICE"
 func Load(dir string) (*Config, error) {
 	root, file := findRoot(dir)
 	if root == "" {
-		return nil, errors.New("no fdev.yaml, Makefile or pubspec.yaml here or in a parent directory")
+		return nil, ErrNoProject
 	}
 	var cfg *Config
 	if file != "" {

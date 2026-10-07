@@ -27,6 +27,9 @@ type State struct {
 	Logs    map[string]bool   `json:"logs"`    // log viewer toggles
 	// Durations is how long flutter's steps took, for progress bars.
 	Durations map[string]float64 `json:"durations,omitempty"`
+	// NoMakefile is set once the user says no to the Makefile fdev offers
+	// to write for a project without one, so it doesn't ask again.
+	NoMakefile bool `json:"noMakefile,omitempty"`
 	// Menu is the menu's last tab, platform and flavor.
 	Menu map[string]string `json:"menu,omitempty"`
 	// Look is the user's log viewer settings; nil until they change them.

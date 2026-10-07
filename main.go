@@ -8,6 +8,7 @@
 //	                        replace fdev with the newest release (or that one)
 //	fdev channel [beta|stable]
 //	                        which releases fdev update installs, or a switch
+//	fdev init               write a Makefile for a project without one
 //	fdev help [command]     the commands (see cli.go), or one command's options
 package main
 
@@ -75,6 +76,8 @@ func run(args []string) int {
 			return runUpdate(args[1:])
 		case "channel":
 			return runChannel(args[1:])
+		case "init":
+			return runInit(args[1:])
 		}
 		if strings.HasPrefix(args[0], "-") {
 			return unknown("option", args[0], optionFlags(globalOptions), "fdev ")
@@ -84,8 +87,11 @@ func run(args []string) int {
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd)
 	if err != nil {
-		if len(args) > 0 { // a mistyped command, most likely
+		if len(args) > 0 && suggest(args[0], commandNames()) != nil { // a mistyped command
 			return unknown("command", args[0], commandNames(), "fdev ")
+		}
+		if err == config.ErrNoProject {
+			return noProject(cwd)
 		}
 		fmt.Fprintln(os.Stderr, "fdev:", err)
 		return 1
@@ -98,8 +104,12 @@ func run(args []string) int {
 		}
 		return unknown("command or target", start, append(commandNames(), known...), "fdev ")
 	}
+	st := state.Load(cfg.Root)
+	if start == "" {
+		cfg = offerMakefile(cfg, st)
+	}
 	showTitles()
-	m := launcher.New(cfg, state.Load(cfg.Root), start)
+	m := launcher.New(cfg, st, start)
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "fdev:", err)
 		return 1

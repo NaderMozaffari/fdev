@@ -281,6 +281,7 @@ fdev                     # the menu
 fdev dev                 # start the `dev` target straight away
 fdev logs -- flutter run -d emulator-5554 --dart-define=FDEV_LOGS=true
 fdev wifi                # debug an Android phone over Wi-Fi (also Tools → wifi-debug)
+fdev init                # write a Makefile for this project, to make the targets yours
 fdev help                # every command, and this project's targets
 fdev help update         # one command's options
 ```
@@ -316,6 +317,12 @@ it back); `.fdev/` holds a `.gitignore` of `*`, so git sees none of it.
 To take over, put an `fdev.yaml` in the project root (start from
 `.fdev/fdev.yaml`, or see [fdev.example.yaml](fdev.example.yaml)): fdev
 then uses it as it is.
+
+To change the targets or add your own, run `fdev init` in a project
+without a Makefile: it writes one made for the project (each flavor's run
+and builds, or the app's without flavors), and fdev offers it once at start
+too. How fdev reads a Makefile, with examples:
+[docs/CUSTOMIZE.md](docs/CUSTOMIZE.md).
 
 ## The launcher
 

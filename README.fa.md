@@ -289,6 +289,7 @@ fdev                     # منو
 fdev dev                 # اجرای مستقیم تارگت dev
 fdev logs -- flutter run -d emulator-5554 --dart-define=FDEV_LOGS=true
 fdev wifi                # دیباگ گوشی اندروید از طریق وای‌فای (یا Tools → wifi-debug)
+fdev init                # یک Makefile برای این پروژه می‌نویسد تا تارگت‌ها را تغییر دهید
 fdev help                # همه‌ی دستورها و تارگت‌های این پروژه
 fdev help update         # گزینه‌های یک دستور
 ```
@@ -325,6 +326,12 @@ fdev help update         # گزینه‌های یک دستور
 برای کنترل کامل، یک `fdev.yaml` در ریشه‌ی پروژه بگذارید (از
 `.fdev/fdev.yaml` شروع کنید یا [fdev.example.yaml](fdev.example.yaml) را
 ببینید): از آن به بعد fdev همان را استفاده می‌کند.
+
+برای تغییر تارگت‌ها یا اضافه کردن تارگت‌های خودتان، در پروژه‌ای که Makefile
+ندارد `fdev init` را بزنید: یک Makefile مخصوص همان پروژه می‌نویسد (اجرا و
+بیلد هر فلیور، یا خود اپ اگر فلیور ندارد)، و fdev یک بار هم موقع اجرا
+پیشنهادش را می‌دهد. اینکه fdev چطور Makefile را می‌خواند، با نمونه:
+[docs/CUSTOMIZE.fa.md](docs/CUSTOMIZE.fa.md).
 
 <a name="launcher"></a>
 

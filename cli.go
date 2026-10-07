@@ -42,6 +42,18 @@ var commands = []command{
 		options: []option{{"pair", "skip straight to pairing a new phone"}},
 	},
 	{
+		name: "init", args: "[--print | --force]",
+		summary: "write a Makefile for this project, to change its targets and add your own",
+		about: "Running and building each flavor (or the app, without flavors), and the\n" +
+			"usual tools, the way fdev reads them. fdev also offers it at start in a\n" +
+			"project with neither a Makefile nor an fdev.yaml. How to make it yours:\n" +
+			config.GuideURL,
+		options: []option{
+			{"--print", "print it instead of writing it, e.g. to compare with your Makefile"},
+			{"--force", "replace the Makefile that's there"},
+		},
+	},
+	{
 		name: "update", aliases: []string{"upgrade", "self-update"}, args: "[version]",
 		summary: "replace fdev with the newest release of its channel",
 		about: "A beta updates to the newest beta (or a newer stable release), a stable\n" +
