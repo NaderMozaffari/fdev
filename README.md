@@ -263,7 +263,7 @@ settings are in your user cache, in a folder named `fdev`.
 
 </details>
 
-To make a release, see [docs/RELEASING.md](docs/RELEASING.md).
+To help with fdev (run it from source, open a pull request, or make a release), see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Use
 

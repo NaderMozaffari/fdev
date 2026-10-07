@@ -269,7 +269,7 @@ fdev update v0.1.3      # همان نسخه، برای برگشتن به آن
 
 </details>
 
-برای انتشار نسخه‌ی جدید، [docs/RELEASING.md](docs/RELEASING.md) را ببینید.
+برای مشارکت در fdev (اجرا از روی کد، باز کردن pull request یا انتشار نسخه‌ی جدید)، [CONTRIBUTING.fa.md](CONTRIBUTING.fa.md) را ببینید.
 
 <a name="use"></a>
 
