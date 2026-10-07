@@ -34,7 +34,10 @@ type Options struct {
 	Current string // the running version
 	Version string // a tag, or "" for the newest of the channel
 	Beta    bool   // the beta channel: pre-releases too
-	Out     io.Writer
+	// Switch installs the newest of the channel even when it is older
+	// than the running fdev: a beta switching to stable releases.
+	Switch bool
+	Out    io.Writer
 }
 
 type release struct {
@@ -83,11 +86,11 @@ func Run(o Options) error {
 		}
 		switch cmp := version.Compare(newest.Tag, o.Current); {
 		case cmp == 0:
-			fmt.Fprintf(o.Out, "fdev %s is the newest %s\n", o.Current, channel)
+			fmt.Fprintf(o.Out, "fdev %s is the newest %s\n", version.Short(), channel)
 			return nil
-		case cmp < 0:
-			fmt.Fprintf(o.Out, "fdev %s is newer than the newest %s, %s; `fdev update %s` goes back to it\n",
-				o.Current, channel, newest.Tag, newest.Tag)
+		case cmp < 0 && !o.Switch:
+			fmt.Fprintf(o.Out, "fdev %s is newer than the newest %s, %s; `fdev channel %s` goes back to it\n",
+				version.Short(), channel, newest.Tag, channel)
 			return nil
 		}
 		rel = newest

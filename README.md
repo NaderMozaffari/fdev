@@ -248,9 +248,15 @@ fdev update             # the newest of its channel: a beta updates to the newes
 fdev update --stable    # stable releases only
 fdev update --beta      # betas too
 fdev update v0.1.3      # that version, to go back to it too
+
+fdev channel            # which channel this fdev is on
+fdev channel stable     # switch: install the newest stable release, even from a newer beta
+fdev channel beta       # switch: install the newest beta
 ```
 
-`FDEV_CHANNEL=beta` (or `stable`) sets the channel for good.
+After a switch, `fdev update` keeps to that channel, because it follows
+the fdev that's installed. `FDEV_CHANNEL=beta` (or `stable`) sets the
+channel for good, whatever is installed.
 
 <details>
 <summary><b>Uninstall</b></summary>

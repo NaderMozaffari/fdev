@@ -254,9 +254,15 @@ fdev update             # جدیدترین نسخه‌ی کانال خودش: ب
 fdev update --stable    # فقط نسخه‌های پایدار
 fdev update --beta      # بتاها هم
 fdev update v0.1.3      # همان نسخه، برای برگشتن به آن
+
+fdev channel            # این fdev روی کدام کانال است
+fdev channel stable     # تغییر کانال: جدیدترین نسخه‌ی پایدار، حتی از یک بتای جدیدتر
+fdev channel beta       # تغییر کانال: جدیدترین بتا
 ```
 
-با `FDEV_CHANNEL=beta` (یا `stable`) کانال را برای همیشه تعیین کنید.
+بعد از تغییر کانال، `fdev update` روی همان کانال می‌ماند، چون از fdev
+نصب‌شده پیروی می‌کند. با `FDEV_CHANNEL=beta` (یا `stable`) کانال را برای
+همیشه تعیین کنید، هر نسخه‌ای که نصب باشد.
 
 <details>
 <summary><b>حذف</b></summary>

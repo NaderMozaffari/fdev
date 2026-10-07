@@ -59,6 +59,18 @@ var commands = []command{
 			"fdev update --local ~/code/fdev",
 		},
 	},
+	{
+		name: "channel", args: "[beta|stable]",
+		summary: "see or switch which releases fdev update installs",
+		about: "Without a channel, says which one fdev is on. With one, installs that\n" +
+			"channel's newest release, even when it is older than this fdev (a beta\n" +
+			"going back to stable), and fdev update keeps to it from then on.",
+		options: []option{
+			{"beta", "betas too: the newest fixes and features, maybe with bugs"},
+			{"stable", "stable releases only"},
+		},
+		examples: []string{"fdev channel", "fdev channel stable", "fdev channel beta"},
+	},
 	{name: "version", summary: "print fdev's version"},
 	{name: "help", args: "[command]", summary: "these commands, or one command's options"},
 }

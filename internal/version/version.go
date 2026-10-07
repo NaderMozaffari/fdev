@@ -105,8 +105,11 @@ func Facts() []config.Fact {
 	}
 	if Repo != "" {
 		how := "fdev update"
-		if Channel(Current) == Beta {
-			how += " (the newest beta; --stable for releases only)"
+		switch Channel(Current) {
+		case Beta:
+			how += " (the newest beta; fdev channel stable for releases only)"
+		case Stable:
+			how += " (fdev channel beta for betas too)"
 		}
 		facts = append(facts, config.Fact{Key: "Updates", Value: how + ", from github.com/" + Repo})
 	}

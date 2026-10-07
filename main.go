@@ -6,6 +6,8 @@
 //	fdev wifi [pair]        debug an Android phone over Wi-Fi
 //	fdev update [--beta|--stable] [version]
 //	                        replace fdev with the newest release (or that one)
+//	fdev channel [beta|stable]
+//	                        which releases fdev update installs, or a switch
 //	fdev help [command]     the commands (see cli.go), or one command's options
 package main
 
@@ -71,6 +73,8 @@ func run(args []string) int {
 			return runWifi(args[1:])
 		case "update", "upgrade", "self-update":
 			return runUpdate(args[1:])
+		case "channel":
+			return runChannel(args[1:])
 		}
 		if strings.HasPrefix(args[0], "-") {
 			return unknown("option", args[0], optionFlags(globalOptions), "fdev ")
@@ -158,6 +162,55 @@ func runUpdate(args []string) int {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fdev update:", err)
 		return 1
+	}
+	return 0
+}
+
+// runChannel is `fdev channel [beta|stable]`: which releases fdev update
+// installs, or a switch to the other channel, installing its newest release
+// even when it is older than this fdev (a beta going back to stable).
+func runChannel(args []string) int {
+	current := fdevversion.Channel(appVersion())
+	if len(args) == 0 {
+		switch current {
+		case "":
+			fmt.Printf("fdev %s is built from source, on no channel: fdev channel stable or beta installs a release\n", fdevversion.Short())
+		case fdevversion.Beta:
+			fmt.Printf("fdev %s is a beta: fdev update installs the newest beta (or a newer stable release)\n", appVersion())
+			fmt.Println("fdev channel stable switches to stable releases")
+		default:
+			fmt.Printf("fdev %s is a stable release: fdev update installs the newest stable release\n", appVersion())
+			fmt.Println("fdev channel beta switches to betas too")
+		}
+		if env := os.Getenv("FDEV_CHANNEL"); env != "" {
+			fmt.Printf("FDEV_CHANNEL=%s is set, so fdev update keeps to %s whatever is installed\n", env, strings.ToLower(env))
+		}
+		return 0
+	}
+	if len(args) > 1 {
+		commandHelp(os.Stderr, findCommand("channel"))
+		return 2
+	}
+	want := strings.ToLower(args[0])
+	switch want {
+	case "-h", "--help":
+		commandHelp(os.Stdout, findCommand("channel"))
+		return 0
+	case fdevversion.Beta, fdevversion.Stable:
+	default:
+		return unknown("channel", args[0], []string{fdevversion.Beta, fdevversion.Stable}, "fdev channel ")
+	}
+	repo := releaseRepo
+	if r := os.Getenv("FDEV_REPO"); r != "" {
+		repo = r
+	}
+	err := update.Run(update.Options{Repo: repo, Current: appVersion(), Beta: want == fdevversion.Beta, Switch: true, Out: os.Stdout})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "fdev channel:", err)
+		return 1
+	}
+	if env := strings.ToLower(os.Getenv("FDEV_CHANNEL")); env != "" && env != want {
+		fmt.Printf("! FDEV_CHANNEL=%s is set: unset it, or fdev update keeps to %s\n", env, env)
 	}
 	return 0
 }
