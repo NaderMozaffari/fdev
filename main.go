@@ -86,7 +86,7 @@ func run(args []string) int {
 			fmt.Print(usage)
 			return 0
 		case "-v", "--version", "version":
-			fmt.Println("fdev", appVersion()+channelNote(appVersion()))
+			fmt.Println("fdev", fdevversion.Describe())
 			return 0
 		case "logs":
 			return runLogs(args[1:])
@@ -154,14 +154,6 @@ func runUpdate(args []string) int {
 		return 1
 	}
 	return 0
-}
-
-// channelNote marks a beta: " (beta)".
-func channelNote(v string) string {
-	if fdevversion.Channel(v) == fdevversion.Beta {
-		return " (beta)"
-	}
-	return ""
 }
 
 func runLogs(args []string) int {

@@ -36,6 +36,23 @@ func Short() string {
 	return Current
 }
 
+// Describe is Current as `fdev version` prints it: a release with its
+// channel (v0.2.0-beta.1 (beta)), a build from source as Short and what it
+// is (dev·07c1a2b (built from source, with uncommitted changes)).
+func Describe() string {
+	switch Channel(Current) {
+	case Beta:
+		return Current + " (beta)"
+	case Stable:
+		return Current
+	}
+	note := "built from source"
+	if strings.HasSuffix(Current, "+dirty") || build().dirty {
+		note += ", with uncommitted changes"
+	}
+	return Short() + " (" + note + ")"
+}
+
 // Name is fdev's name as the headers show it: "fdev", or "fdev v1.4.0"
 // once it was clicked.
 func Name() string {
@@ -58,7 +75,7 @@ func Line() string {
 // Facts is what fdev knows about itself, for the settings: its version,
 // the commit and Go it was built from, and where it is installed.
 func Facts() []config.Fact {
-	facts := []config.Fact{{Key: "Version", Value: Current}}
+	facts := []config.Fact{{Key: "Version", Value: Short()}}
 	switch Channel(Current) {
 	case Beta:
 		facts = append(facts, config.Fact{Key: "Channel", Value: "beta: a pre-release, it may have bugs"})
