@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# A stand-in for adb in the demo project (see flutter, beside it).
+case $1 in
+devices)
+	echo "List of devices attached"
+	echo "R5CT21PIXEL8           device usb:1-1 product:shiba model:Pixel_8 device:shiba transport_id:3"
+	echo "emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64x transport_id:4"
+	;;
+*) echo "adb (demo): $*" ;;
+esac

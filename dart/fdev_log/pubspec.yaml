@@ -1,0 +1,11 @@
+name: fdev_log
+description: Structured logs for the fdev log viewer, with plain-text output everywhere else.
+version: 0.1.0
+repository: https://github.com/NaderMozaffari/fdev
+publish_to: none
+
+environment:
+  sdk: ^3.3.0
+
+dev_dependencies:
+  test: ^1.25.0

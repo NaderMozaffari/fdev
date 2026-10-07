@@ -1,0 +1,67 @@
+# The demo project fdev's README screenshots are recorded in (see
+# ../record.sh). Its `flutter` and `adb` are the fakes in ../bin.
+title: Acme Shop
+
+logs:
+  layout: lines
+  values: [userId, cartId]
+
+flavors:
+  dev:
+    icon: assets/icons/dev.png
+    info:
+      App: Acme Shop Dev
+      ID: shop.acme.app.dev
+      Backend: api.dev.acme.shop
+      About: The test app. Talks to the test backend and installs next to the store app.
+  staging:
+    icon: assets/icons/staging.png
+    info:
+      App: Acme Shop
+      ID: shop.acme.app
+      Backend: api.dev.acme.shop
+      About: The store app's id on the test backend, to test store billing.
+  prod:
+    icon: assets/icons/prod.png
+    info:
+      App: Acme Shop
+      ID: shop.acme.app
+      Backend: api.acme.shop
+      About: The store app. Talks to the production backend.
+
+groups:
+  - name: Run
+    targets:
+      - {name: dev, flavor: dev, platform: Android, desc: Run the test app, logs: true, ask: [store, "device:android"],
+         run: 'flutter run --flavor dev -t lib/main_dev.dart -d "$DEVICE" $FDEV_DART_DEFINES'}
+      - {name: staging, flavor: staging, platform: Android, desc: The store app's id on the test backend, logs: true, ask: [store, "device:android"],
+         run: 'flutter run --flavor staging -t lib/main_staging.dart -d "$DEVICE" $FDEV_DART_DEFINES'}
+      - {name: prod, flavor: prod, platform: Android, desc: Run the store app, logs: true, ask: [store, "device:android"],
+         run: 'flutter run --flavor prod -t lib/main_prod.dart -d "$DEVICE" $FDEV_DART_DEFINES'}
+      - {name: ios-dev, flavor: dev, platform: iOS, desc: The test app on an iPhone or the simulator, logs: true, ask: ["device:ios"],
+         run: 'flutter run --flavor dev -t lib/main_dev.dart -d "$DEVICE" $FDEV_DART_DEFINES'}
+      - {name: ios-prod, flavor: prod, platform: iOS, desc: The store app on an iPhone or the simulator, logs: true, ask: ["device:ios"],
+         run: 'flutter run --flavor prod -t lib/main_prod.dart -d "$DEVICE" $FDEV_DART_DEFINES'}
+      - {name: web-dev, flavor: dev, platform: Web, desc: The test app in Chrome, logs: true,
+         run: 'flutter run -d chrome -t lib/main_dev.dart $FDEV_DART_DEFINES'}
+  - name: Build
+    targets:
+      - {name: apk-dev, flavor: dev, platform: Android, desc: APK, dev flavor, ask: [store], run: 'flutter build apk --flavor dev -t lib/main_dev.dart'}
+      - {name: apk-prod, flavor: prod, platform: Android, desc: Release APK, ask: [store], run: 'flutter build apk --release --flavor prod -t lib/main_prod.dart'}
+      - {name: aab-prod, flavor: prod, platform: Android, desc: App bundle for the stores, ask: [store], run: 'flutter build appbundle --flavor prod -t lib/main_prod.dart'}
+      - {name: ipa-prod, flavor: prod, platform: iOS, desc: Release IPA, run: 'flutter build ipa --flavor prod -t lib/main_prod.dart'}
+  - name: Tools
+    targets:
+      - {name: pub-get, desc: flutter pub get, run: flutter pub get}
+      - {name: codegen, desc: build_runner, run: dart run build_runner build -d}
+      - {name: clean, desc: flutter clean, run: flutter clean}
+
+asks:
+  store:
+    title: Store edition
+    env: STORE
+    options:
+      - {label: Google Play, value: "", desc: "builds dev · staging · prod", icon: play, color: "#4285F4"}
+      - {label: Cafe Bazaar, value: bazaar, desc: "builds devBazaar · stagingBazaar · prodBazaar", icon: bag, color: "#3DB54A"}
+      - {label: Myket, value: myket, desc: "builds devMyket · stagingMyket · prodMyket", icon: store, color: "#00A0E3"}
+      - {label: AppGallery, value: huawei, desc: "needs HMS", icon: star, color: "#E8323C"}

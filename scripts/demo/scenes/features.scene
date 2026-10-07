@@ -1,0 +1,23 @@
+# The values window, a selection, the settings. Run as `fdev dev`.
+sleep 1.2s
+key enter
+sleep 1.2s
+key enter
+sleep 16s
+key k
+sleep 1.2s
+mark values
+key esc
+sleep 0.5s
+key tab
+key up 3
+key shift+up
+sleep 1s
+mark select
+key esc
+sleep 0.5s
+key l
+sleep 1.4s
+key down 3
+sleep 1.2s
+mark settings

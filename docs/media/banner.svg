@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" width="960" height="280" role="img" aria-labelledby="t d">
+  <title id="t">fdev</title>
+  <desc id="d">A launcher and log viewer for Flutter projects, in the terminal.</desc>
+  <defs>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox" spreadMethod="reflect">
+      <stop offset="0" stop-color="#F780E2"/>
+      <stop offset="0.5" stop-color="#7D56F4"/>
+      <stop offset="1" stop-color="#5FD7FF"/>
+      <animateTransform attributeName="gradientTransform" type="translate" values="0 0; 1 0; 0 0" dur="8s" repeatCount="indefinite"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F780E2" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#7D56F4" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#5FD7FF" stop-opacity=".45"/>
+    </linearGradient>
+    <style>
+      .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+      .typing { animation: typing 12s infinite; }
+      @keyframes typing {
+        0%, 8% { transform: translateX(0); animation-timing-function: steps(28, end); }
+        45%, 100% { transform: translateX(320px); }
+      }
+      .cursor { animation: blink 1.1s steps(1) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+      .line { opacity: 0; animation: show 12s infinite; }
+      @keyframes show {
+        0% { opacity: 0; transform: translateY(6px); }
+        4% { opacity: 1; transform: none; }
+        86% { opacity: 1; transform: none; }
+        92%, 100% { opacity: 0; }
+      }
+      .l1 { animation-delay: .4s; } .l2 { animation-delay: 1.1s; } .l3 { animation-delay: 1.9s; }
+      .l4 { animation-delay: 2.4s; } .l5 { animation-delay: 3.1s; } .l6 { animation-delay: 3.9s; }
+      .l7 { animation-delay: 4.8s; }
+      .spin text { opacity: 0; animation: spin .8s steps(1) infinite; }
+      .spin text:nth-child(2) { animation-delay: .2s; } .spin text:nth-child(3) { animation-delay: .4s; }
+      .spin text:nth-child(4) { animation-delay: .6s; }
+      @keyframes spin { 0% { opacity: 1; } 25%, 100% { opacity: 0; } }
+      .wait { animation: wait 12s infinite; animation-delay: 3.1s; opacity: 0; }
+      @keyframes wait { 0% { opacity: 0; } 4% { opacity: 1; } 20% { opacity: 1; } 21%, 100% { opacity: 0; } }
+      .got { animation: got 12s infinite; animation-delay: 3.1s; opacity: 0; }
+      @keyframes got { 0%, 20% { opacity: 0; } 21% { opacity: 1; } 86% { opacity: 1; } 92%, 100% { opacity: 0; } }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="958" height="278" rx="16" fill="#141414"/>
+  <rect x="1" y="1" width="958" height="278" rx="16" fill="none" stroke="url(#edge)" stroke-width="1.5"/>
+  <circle cx="26" cy="24" r="5.5" fill="#FF5F57"/><circle cx="44" cy="24" r="5.5" fill="#FEBC2E"/><circle cx="62" cy="24" r="5.5" fill="#28C840"/>
+
+  <!-- the wordmark -->
+  <text class="mono" x="44" y="146" font-size="96" font-weight="800" fill="url(#word)" letter-spacing="-2">fdev</text>
+  <rect class="cursor" x="284" y="76" width="34" height="78" rx="3" fill="#F780E2"/>
+  <text class="mono" x="48" y="196" font-size="19" fill="#C8C8C8">launch · run · read the logs</text>
+  <rect class="typing" x="44" y="174" width="400" height="30" fill="#141414"/>
+  <text class="mono" x="48" y="226" font-size="14" fill="#7A7A7A">a launcher and log viewer</text>
+  <text class="mono" x="48" y="246" font-size="14" fill="#7A7A7A">for Flutter, in the terminal</text>
+
+  <!-- a small log viewer -->
+  <g class="mono" font-size="13.5">
+    <rect x="470" y="44" width="462" height="210" rx="10" fill="#1B1B1B" stroke="#2A2A2A"/>
+    <rect x="486" y="58" width="40" height="20" fill="#F780E2"/><text x="491" y="73" fill="#FFFDF5" font-weight="700">fdev</text>
+    <rect x="526" y="58" width="86" height="20" fill="#6B50FF"/><text x="532" y="73" fill="#FFFDF5" font-weight="700">Acme Shop</text>
+    <text x="622" y="73" fill="#9A9A9A">dev · Pixel 8</text>
+
+    <g class="line l1"><text x="486" y="104"><tspan fill="#6A6A6A">14:02:11</tspan> <tspan fill="#5FF2D9" font-weight="700">INFO</tspan> <tspan fill="#EEEEEE" font-weight="700">App:</tspan> <tspan fill="#DDDDDD">Acme Shop 2.4.0 · dev</tspan></text></g>
+    <g class="line l2"><text x="486" y="125"><tspan fill="#6A6A6A">14:02:11</tspan> <tspan fill="#8F7CFF" font-weight="700">REQU</tspan> <tspan fill="#EEEEEE" font-weight="700">POST →</tspan> <tspan fill="#8F7CFF" font-weight="700">refreshToken</tspan> <tspan fill="#7A7A7A">/v1/auth</tspan></text></g>
+    <g class="line l3"><text x="486" y="146"><tspan fill="#6A6A6A">14:02:12</tspan> <tspan fill="#F780E2" font-weight="700">RESP</tspan> <tspan fill="#EEEEEE" font-weight="700">POST ←</tspan> <tspan fill="#F780E2" font-weight="700">refreshToken</tspan> <tspan fill="#02BF87">200</tspan> <tspan fill="#9A9A9A">184ms</tspan></text></g>
+    <g class="line l4"><text x="486" y="167"><tspan fill="#6A6A6A">14:02:12</tspan> <tspan fill="#02BF87" font-weight="700">OK  </tspan> <tspan fill="#EEEEEE" font-weight="700">Auth:</tspan> <tspan fill="#DDDDDD">session refreshed</tspan></text></g>
+    <g class="line l5">
+      <text x="486" y="188"><tspan fill="#6A6A6A">14:02:12</tspan> <tspan fill="#8F7CFF" font-weight="700">REQU</tspan> <tspan fill="#EEEEEE" font-weight="700">GET →</tspan> <tspan fill="#8F7CFF" font-weight="700">getProducts</tspan></text>
+      <g class="wait"><g class="spin" fill="#8F7CFF"><text x="760" y="188">⣾</text><text x="760" y="188">⣽</text><text x="760" y="188">⣻</text><text x="760" y="188">⢿</text></g><text x="776" y="188" fill="#8F7CFF">1.2s</text></g>
+      <text class="got" x="760" y="188"><tspan fill="#02BF87">200</tspan> <tspan fill="#9A9A9A">2.4s</tspan></text>
+    </g>
+    <g class="line l6"><text x="486" y="209"><tspan fill="#6A6A6A">14:02:13</tspan> <tspan fill="#ECFD65" font-weight="700">WARN</tspan> <tspan fill="#EEEEEE" font-weight="700">Images:</tspan> <tspan fill="#ECFD65">hero_banner.webp took 1.8s</tspan></text></g>
+    <g class="line l7"><text x="486" y="230"><tspan fill="#6A6A6A">14:02:14</tspan> <tspan fill="#FF5F87" font-weight="700">ERRO</tspan> <tspan fill="#EEEEEE" font-weight="700">Checkout:</tspan> <tspan fill="#FF5F87">card declined (402)</tspan> <tspan fill="#F780E2">↗</tspan></text></g>
+  </g>
+</svg>

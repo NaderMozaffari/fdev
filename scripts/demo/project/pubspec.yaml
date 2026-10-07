@@ -1,0 +1,11 @@
+name: acme_shop
+description: The demo app fdev's screenshots are recorded with.
+version: 2.4.0+57
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter

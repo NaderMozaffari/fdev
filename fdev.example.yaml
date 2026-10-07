@@ -1,0 +1,84 @@
+# fdev.yaml: the targets `fdev` offers in this project. Optional: without one,
+# fdev works them out of the project (see the README) into .fdev/fdev.yaml.
+title: My App
+
+# Environment for every target (optional).
+env:
+  FLUTTER_SUPPRESS_ANALYTICS: "true"
+
+# How to open code from a log line (optional; see the README). Split on
+# spaces, with {file}, {line} and {col}.
+# editor: code -g {file}:{line}:{col}
+
+# How the log viewer draws logs (optional). Each user can change it with `l`
+# in the viewer; their choice is kept in their cache, not here.
+logs:
+  layout: columns   # lines (compact), columns (aligned) or table (with borders)
+  labels: badge     # text, or badge: the level on a colored background
+  spacing: 0        # blank lines between logs: 0, 1 or 2
+  time: clock       # clock (14:02:11) or millis (14:02:11.482)
+  save: false       # save every session; ctrl+s saves one any time
+  dir: .fdev/logs   # in the project; fdev puts a .gitignore of `*` in it
+  group: pause      # a line between related logs: pause (bursts), tag, or off
+  off: []           # key combinations that do nothing, e.g. [ctrl+l, ctrl+z]
+  rtl: auto         # Persian/Arabic text: auto, fdev (joins it, right to left) or terminal
+  values: []        # more keys to keep at hand (k), besides tokens: [userId, deviceId]
+
+# What the menu's details panel shows about each flavor (optional). The
+# icon is found in android/app/src/<flavor>/res (or the iOS AppIcon-<flavor>)
+# unless you give one.
+flavors:
+  dev:
+    # icon: assets/icons/dev.png
+    # color: "#E8A400"          # its chip in the menu; by the name when empty
+    info:
+      App: My App Dev
+      ID: com.example.app.dev
+      Backend: test.example.com
+  prod:
+    info:
+      App: My App
+      ID: com.example.app
+      Backend: example.com
+
+groups:
+  - name: Run
+    targets:
+      # run is a shell command. Answers to `ask` arrive as environment
+      # variables (make reads them as variables too). logs: true opens the
+      # log viewer and sets FDEV_DART_DEFINES=--dart-define=FDEV_LOGS=true.
+      - name: dev
+        desc: Test app
+        run: make dev
+        flavor: dev             # its icon and facts in the menu
+        logs: true
+        ask: [store, "device:android"]
+      - name: ios
+        desc: On an iPhone or the simulator
+        run: flutter run -d "$DEVICE" $FDEV_DART_DEFINES
+        logs: true
+        ask: ["device:ios"]
+        os: [darwin]          # only offered on macOS
+      - name: web
+        desc: In Chrome
+        run: flutter run -d chrome $FDEV_DART_DEFINES
+        logs: true
+  - name: Build
+    targets:
+      - {name: apk, desc: Release APK, run: make build-apk, ask: [store]}
+      - {name: ipa, desc: Release IPA, run: flutter build ipa --release, os: [darwin]}
+  - name: Tools
+    targets:
+      - {name: codegen, desc: build_runner, run: dart run build_runner build -d}
+      - {name: clean, desc: flutter clean, run: flutter clean}
+
+# Questions a target can ask. The built-in ones are device, device:android
+# and device:ios: they list `flutter devices` and set DEVICE ("" lets
+# flutter choose).
+asks:
+  store:
+    title: Store edition
+    env: STORE
+    options:
+      - {label: Google Play, value: ""}
+      - {label: App Gallery, value: huawei, desc: needs HMS}

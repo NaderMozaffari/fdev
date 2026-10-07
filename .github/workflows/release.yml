@@ -1,0 +1,30 @@
+name: Release
+# Push a tag to build fdev for macOS, Linux and Windows and publish the
+# release: v1.2.0 for a stable release, v1.2.0-beta.1 for a beta (a GitHub
+# pre-release). See docs/RELEASING.md.
+#
+# The release goes to this repository, or, with the RELEASE_REPO variable
+# set (owner/name, e.g. a public repository that holds only releases), to
+# that one, using the RELEASE_TOKEN secret: a token that can write to it.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the release notes are the commits since the last tag
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: scripts/release.sh "$GITHUB_REF_NAME" --publish
+        env:
+          RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
+          GH_TOKEN: ${{ vars.RELEASE_REPO && secrets.RELEASE_TOKEN || github.token }}

@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+# A stand-in for flutter in the demo project: it prints what `flutter run`,
+# `flutter build` and the rest would, with an app's logs in fdev's record
+# format, so the README's recordings need no device or SDK.
+
+flavor=dev device=R5CT21PIXEL8 release=false
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+	case ${args[i]} in
+	--flavor) flavor=${args[i + 1]} ;;
+	-d) device=${args[i + 1]} ;;
+	--release) release=true ;;
+	esac
+done
+case $device in
+R5CT21PIXEL8 | "") device_name="Pixel 8" ;;
+emulator-*) device_name="sdk gphone64 x86 64" ;;
+chrome) device_name=Chrome ;;
+*) device_name="iPhone 16 Pro" ;;
+esac
+cap() { printf '%s%s' "$(printf %s "${1:0:1}" | tr a-z A-Z)" "${1:1}"; }
+variant=$flavor$( [ -n "$STORE" ] && cap "$STORE")
+
+# A step flutter shows while it works, then the time it took.
+step() { # step <text> <seconds> <shown time>
+	printf '%s...' "$1"
+	sleep "$2"
+	printf '%*s\n' $((70 - ${#1})) "$3"
+}
+
+pid=8123
+fd() { printf 'I/flutter (%s): ⟪fd⟫%s\n' $pid "$1"; }
+say() { printf 'I/flutter (%s): %s\n' $pid "$1"; }
+native() { printf '%s\n' "$1"; }
+
+case $1 in
+devices)
+	cat <<'EOF'
+[
+  {"name": "Pixel 8", "id": "R5CT21PIXEL8", "isSupported": true, "targetPlatform": "android-arm64", "emulator": false, "sdk": "Android 15 (API 35)"},
+  {"name": "iPhone 16 Pro", "id": "6F1C2A9E-3B7D-4E21-9C55-1D2B3E4F5A6B", "isSupported": true, "targetPlatform": "ios", "emulator": true, "sdk": "com.apple.CoreSimulator.SimRuntime.iOS-18-2 (simulator)"},
+  {"name": "macOS", "id": "macos", "isSupported": true, "targetPlatform": "darwin", "emulator": false, "sdk": "macOS 15.3.1"},
+  {"name": "Chrome", "id": "chrome", "isSupported": true, "targetPlatform": "web-javascript", "emulator": false, "sdk": "Google Chrome 141.0"}
+]
+EOF
+	exit 0
+	;;
+pub)
+	echo "Resolving dependencies... "
+	sleep 1.2
+	echo "Downloading packages... "
+	sleep 0.8
+	echo "  dio 5.9.0"
+	echo "  flutter_bloc 9.1.1"
+	echo "  go_router 16.2.4"
+	echo "Got dependencies!"
+	echo "3 packages have newer versions incompatible with dependency constraints."
+	echo "Try \`flutter pub outdated\` for more information."
+	exit 0
+	;;
+clean)
+	step "Cleaning Xcode workspace" 0.6 "1,204ms"
+	echo "Deleting build..."
+	echo "Deleting .dart_tool..."
+	echo "Deleting ephemeral..."
+	exit 0
+	;;
+build)
+	what=$2 mode=debug
+	[ "$release" = true ] || [ "$what" != apk ] && mode=release
+	echo "Resolving dependencies... "
+	sleep 0.4
+	echo "Got dependencies!"
+	echo
+	echo "Font asset \"MaterialIcons-Regular.otf\" was tree-shaken, reducing it from 1645184 to 9872 bytes (99.4% reduction)."
+	echo "Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app."
+	task=assemble$(cap "$variant")$(cap $mode)
+	[ "$what" = appbundle ] && task=bundle$(cap "$variant")$(cap $mode)
+	step "Running Gradle task '$task'" 9 "41.7s"
+	if [ "$what" = appbundle ]; then
+		echo "✓ Built build/app/outputs/bundle/${variant}Release/app-$flavor${STORE:+-$STORE}-release.aab (38.2MB)"
+	else
+		echo "✓ Built build/app/outputs/flutter-apk/app-$flavor${STORE:+-$STORE}-$mode.apk (24.6MB)"
+	fi
+	exit 0
+	;;
+run) ;;
+*)
+	echo "flutter (demo): $*"
+	exit 0
+	;;
+esac
+
+# flutter run
+echo "Launching lib/main_$flavor.dart on $device_name in debug mode..."
+step "Running Gradle task 'assemble$(cap "$variant")Debug'" 5 "18.4s"
+echo "✓ Built build/app/outputs/flutter-apk/app-$flavor${STORE:+-$STORE}-debug.apk"
+step "Installing build/app/outputs/flutter-apk/app-$flavor${STORE:+-$STORE}-debug.apk" 1.4 "1.6s"
+native "D/FlutterJNI( $pid): Beginning load of flutter..."
+native "D/FlutterJNI( $pid): flutter (null) was loaded normally!"
+native "I/ResourceExtractor( $pid): Found extracted resources res_timestamp-1-1791394512000"
+step "Syncing files to device $device_name" 0.3 "84ms"
+cat <<EOF
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave the application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on $device_name is available at: http://127.0.0.1:52643/Qx3sZ1q0vXo=/
+The Flutter DevTools debugger and profiler on $device_name is available at: http://127.0.0.1:9101?uri=http://127.0.0.1:52643/Qx3sZ1q0vXo=/
+EOF
+
+api=https://api.dev.acme.shop
+[ "$flavor" = prod ] && api=https://api.acme.shop
+host=${api#https://}
+token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ODIxIiwiZXhwIjoxNzkxMzk4MTEyfQ.k7Qm2Vx9pL4sT1wZ8rNc3yHd6fJb0aE5uGi
+headers='{"content-type":"application/json","accept-language":"en-US","x-app-version":"2.4.0+57","authorization":"Bearer ••••"}'
+
+app() {
+	sleep 0.6
+	native "D/EGL_emulation( $pid): app_time_stats: avg=11.32ms min=2.04ms max=48.90ms count=58"
+	fd '{"l":"info","t":"App","m":"Acme Shop 2.4.0+57 · '"$flavor"' · '"$host"'","at":"lib/main.dart:5:3"}'
+	fd '{"l":"debug","t":"Config","m":"remote config {apiHost: '"$host"', store: '"${STORE:-play}"', features: {newCheckout: true, reviews: false, darkMode: true}, minVersion: 2.1.0}","at":"lib/main.dart:5:3"}'
+	sleep 0.3
+	fd '{"l":"http","p":"request","id":"1","name":"refreshToken","method":"POST","url":"'"$api"'/v1/auth/refresh","headers":{"content-type":"application/json"},"body":{"refresh_token":"••••"},"at":"lib/data/auth_api.dart:31:5"}'
+	sleep 0.7
+	fd '{"l":"http","p":"response","id":"1","name":"refreshToken","method":"POST","url":"'"$api"'/v1/auth/refresh","status":200,"ms":184,"headers":{"content-type":"application/json; charset=utf-8","x-request-id":"7f3c9a12"},"body":{"access_token":"••••","expires_in":3600,"token_type":"Bearer"},"at":"lib/data/auth_api.dart:31:5"}'
+	fd '{"l":"value","k":"accessToken","v":"'"$token"'","t":"Auth"}'
+	fd '{"l":"success","t":"Auth","m":"session refreshed, expires in 60 min","at":"lib/features/auth/auth_bloc.dart:57:7"}'
+	sleep 0.3
+	fd '{"l":"http","p":"request","id":"2","name":"getProfile","method":"GET","url":"'"$api"'/v1/me","headers":'"$headers"',"at":"lib/data/api_client.dart:88:12"}'
+	sleep 0.5
+	fd '{"l":"http","p":"response","id":"2","name":"getProfile","method":"GET","url":"'"$api"'/v1/me","status":200,"ms":142,"headers":{"content-type":"application/json; charset=utf-8","cache-control":"no-store"},"body":{"userId":4821,"name":"Alex Rivera","email":"alex@example.com","plan":"pro","locale":"en-US","cartId":"c_9f2a71"},"at":"lib/data/api_client.dart:88:12"}'
+	sleep 0.4
+	fd '{"l":"http","p":"request","id":"3","name":"getProducts","method":"GET","url":"'"$api"'/v1/products?category=sneakers&sort=popular&page=1&limit=20","headers":'"$headers"',"at":"lib/data/catalog_api.dart:24:9"}'
+	sleep 0.6
+	fd '{"l":"info","t":"Home","m":"home screen built in 312ms","at":"lib/features/home/home_page.dart:41:5"}'
+	sleep 0.5
+	say "cart restored: {items: 2, total: 129.98, currency: USD, coupon: null}"
+	native "I/Choreographer( $pid): Skipped 31 frames!  The application may be doing too much work on its main thread."
+	sleep 0.6
+	fd '{"l":"warning","t":"Images","m":"hero_banner.webp took 1.8s to load (1.2MB); a smaller size would do","at":"lib/features/home/image_cache.dart:63:11"}'
+	sleep 1.2
+	fd '{"l":"http","p":"response","id":"3","name":"getProducts","method":"GET","url":"'"$api"'/v1/products?category=sneakers&sort=popular&page=1&limit=20","status":200,"ms":2380,"headers":{"content-type":"application/json; charset=utf-8","x-total-count":"184"},"body":{"page":1,"total":184,"items":[{"id":"sk-101","name":"Air Runner","price":89.99,"inStock":true},{"id":"sk-102","name":"Trail Blazer","price":119.0,"inStock":true},{"id":"sk-103","name":"City Walk","price":74.5,"inStock":false}]},"at":"lib/data/catalog_api.dart:24:9"}'
+	sleep 0.5
+	fd '{"l":"info","t":"L10n","m":"زبان برنامه: فارسی، ۲ کالا در سبد خرید","at":"lib/main.dart:5:3"}'
+	sleep 0.4
+	fd '{"l":"info","t":"Cart","m":"added Air Runner ×1","at":"lib/features/checkout/checkout_repository.dart:22:5"}'
+	native "D/ProfileInstaller( $pid): Installing profile for shop.acme.app.dev"
+	sleep 0.5
+	fd '{"l":"http","p":"request","id":"4","name":"placeOrder","method":"POST","url":"'"$api"'/v1/orders","headers":'"$headers"',"body":{"cartId":"c_9f2a71","payment":{"method":"card","last4":"4242"},"shipping":"express"},"at":"lib/features/checkout/checkout_repository.dart:48:7"}'
+	sleep 0.6
+	fd '{"l":"http","p":"response","id":"4","name":"placeOrder","method":"POST","url":"'"$api"'/v1/orders","status":402,"ms":231,"headers":{"content-type":"application/json; charset=utf-8"},"body":{"error":"card_declined","message":"Your card was declined.","retryable":false},"at":"lib/features/checkout/checkout_repository.dart:48:7"}'
+	fd '{"l":"error","t":"Checkout","m":"PaymentException: card declined (402)","s":"#0      CheckoutRepository.placeOrder (package:acme_shop/features/checkout/checkout_repository.dart:48:7)\n<asynchronous suspension>\n#1      CheckoutBloc._onSubmit (package:acme_shop/features/checkout/checkout_bloc.dart:71:22)\n<asynchronous suspension>\n#2      Bloc.on.<anonymous closure>.handleEvent (package:bloc/src/bloc.dart:226:13)\n<asynchronous suspension>","at":"lib/features/checkout/checkout_repository.dart:48:7"}'
+}
+
+reload=0
+app &
+logs=$!
+trap 'kill $logs 2>/dev/null' EXIT
+[ -t 0 ] && stty -icanon -echo 2>/dev/null
+while IFS= read -rsn1 key; do
+	case $key in
+	r)
+		reload=$((reload + 1))
+		printf 'Performing hot reload...'
+		sleep 0.5
+		printf '\nReloaded 3 of 1204 libraries in 412ms (compile: 38 ms, reload: 171 ms, reassemble: 168 ms).\n'
+		fd '{"l":"info","t":"Home","m":"rebuilt after reload #'$reload'","at":"lib/features/home/home_page.dart:41:5"}'
+		;;
+	R)
+		kill $logs 2>/dev/null
+		printf 'Performing hot restart...'
+		sleep 0.9
+		printf '\nRestarted application in 1,102ms.\n'
+		app &
+		logs=$!
+		;;
+	q)
+		kill $logs 2>/dev/null
+		echo
+		echo "Application finished."
+		exit 0
+		;;
+	esac
+done
+wait $logs

@@ -1,0 +1,8 @@
+# The viewer once the logs are in, in the theme and layout record.sh sets.
+# Run as `fdev dev`.
+sleep 1.2s
+key enter
+sleep 1.2s
+key enter
+sleep 17s
+mark shot
