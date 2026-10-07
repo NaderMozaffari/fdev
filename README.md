@@ -275,7 +275,12 @@ fdev                     # the menu
 fdev dev                 # start the `dev` target straight away
 fdev logs -- flutter run -d emulator-5554 --dart-define=FDEV_LOGS=true
 fdev wifi                # debug an Android phone over Wi-Fi (also Tools → wifi-debug)
+fdev help                # every command, and this project's targets
+fdev help update         # one command's options
 ```
+
+A mistyped command, option or target stops with the closest ones
+(`fdev versoin` → *Did you mean? fdev version*).
 
 > [!TIP]
 > Nothing to set up, and nothing in git: at every start fdev works the menu

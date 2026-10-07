@@ -6,6 +6,7 @@
 //	fdev wifi [pair]        debug an Android phone over Wi-Fi
 //	fdev update [--beta|--stable] [version]
 //	                        replace fdev with the newest release (or that one)
+//	fdev help [command]     the commands (see cli.go), or one command's options
 package main
 
 import (
@@ -44,32 +45,6 @@ func appVersion() string {
 	return "dev"
 }
 
-const usage = `fdev: a launcher and log viewer for Flutter projects
-
-Usage:
-  fdev                    pick a target from fdev.yaml or the Makefile
-  fdev <target>           start that target straight away
-  fdev logs -- <command>  run a command (e.g. flutter run) in the log viewer
-  fdev wifi [pair]        debug an Android phone over Wi-Fi: connect the phones
-                          paired before, or pair one with a QR code or its
-                          pairing code (pair: skip straight to pairing)
-  fdev update [version]   replace fdev with the newest release of its channel
-                          (or that version): stable, or beta when fdev is a
-                          beta; --beta or --stable picks the channel
-  fdev version
-
-fdev works the targets out of the project at every start (its Makefile,
-android/, ios/, lib/) and writes what it found to .fdev/fdev.yaml, which git
-ignores. An fdev.yaml in the project root replaces that (see fdev.example.yaml).
-
-Environment:
-  FDEV_EDITOR  command that opens a file at a line, e.g. 'code -g {file}:{line}:{col}'
-  FDEV_REPO    owner/name of the repository fdev update downloads from
-  FDEV_CHANNEL stable or beta: the channel fdev update keeps to
-  GH_TOKEN     a GitHub token for fdev update, when that repository is private
-               (or log in with the GitHub CLI: gh auth login)
-`
-
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -82,9 +57,11 @@ func run(args []string) int {
 	}
 	if len(args) > 0 {
 		switch args[0] {
-		case "-h", "--help", "help":
-			fmt.Print(usage)
+		case "-h", "--help":
+			help(os.Stdout)
 			return 0
+		case "help":
+			return runHelp(args[1:])
 		case "-v", "--version", "version":
 			fmt.Println("fdev", fdevversion.Describe())
 			return 0
@@ -96,19 +73,28 @@ func run(args []string) int {
 			return runUpdate(args[1:])
 		}
 		if strings.HasPrefix(args[0], "-") {
-			fmt.Fprint(os.Stderr, usage)
-			return 2
+			return unknown("option", args[0], optionFlags(globalOptions), "fdev ")
 		}
 	}
 
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd)
 	if err != nil {
+		if len(args) > 0 { // a mistyped command, most likely
+			return unknown("command", args[0], commandNames(), "fdev ")
+		}
 		fmt.Fprintln(os.Stderr, "fdev:", err)
 		return 1
 	}
-	showTitles()
 	start := strings.Join(args, " ")
+	if start != "" && cfg.Target(start) == nil {
+		var known []string
+		for _, t := range cfg.Targets() {
+			known = append(known, t.Name)
+		}
+		return unknown("command or target", start, append(commandNames(), known...), "fdev ")
+	}
+	showTitles()
 	m := launcher.New(cfg, state.Load(cfg.Root), start)
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "fdev:", err)
@@ -138,9 +124,11 @@ func runUpdate(args []string) int {
 			beta = true
 		case a == "--stable":
 			beta = false
+		case a == "-h" || a == "--help":
+			commandHelp(os.Stdout, findCommand("update"))
+			return 0
 		case strings.HasPrefix(a, "-"):
-			fmt.Fprintln(os.Stderr, "usage: fdev update [--beta|--stable] [version]")
-			return 2
+			return unknown("option", a, optionFlags(findCommand("update").options), "fdev update ")
 		default:
 			want = a
 			if !strings.HasPrefix(want, "v") {
@@ -157,11 +145,15 @@ func runUpdate(args []string) int {
 }
 
 func runLogs(args []string) int {
+	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
+		commandHelp(os.Stdout, findCommand("logs"))
+		return 0
+	}
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: fdev logs -- <command> [args...]")
+		commandHelp(os.Stderr, findCommand("logs"))
 		return 2
 	}
 	cwd, _ := os.Getwd()
@@ -200,9 +192,11 @@ func runWifi(args []string) int {
 			o.Pair = true
 		case "--wait": // the launcher runs it so
 			o.Wait = true
+		case "-h", "--help":
+			commandHelp(os.Stdout, findCommand("wifi"))
+			return 0
 		default:
-			fmt.Fprintln(os.Stderr, "usage: fdev wifi [pair]")
-			return 2
+			return unknown("option", a, []string{"pair"}, "fdev wifi ")
 		}
 	}
 	return wifi.Run(o)

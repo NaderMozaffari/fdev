@@ -283,7 +283,12 @@ fdev                     # منو
 fdev dev                 # اجرای مستقیم تارگت dev
 fdev logs -- flutter run -d emulator-5554 --dart-define=FDEV_LOGS=true
 fdev wifi                # دیباگ گوشی اندروید از طریق وای‌فای (یا Tools → wifi-debug)
+fdev help                # همه‌ی دستورها و تارگت‌های این پروژه
+fdev help update         # گزینه‌های یک دستور
 ```
+
+اگر دستور، گزینه یا تارگتی را اشتباه تایپ کنید، fdev نزدیک‌ترین‌ها را
+پیشنهاد می‌دهد (`fdev versoin` ← *Did you mean? fdev version*).
 
 > [!TIP]
 > هیچ تنظیمی لازم نیست و چیزی به git اضافه نمی‌شود: fdev هر بار منو را از
