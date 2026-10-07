@@ -8,6 +8,7 @@ descriptions, and the questions they ask before they run.
 
 - [Where fdev gets its targets](#where-fdev-gets-its-targets)
 - [Start with `fdev init`](#start-with-fdev-init)
+- [Edit the Makefile: no programming needed](#edit-the-makefile-no-programming-needed)
 - [The Makefile: what fdev reads](#the-makefile-what-fdev-reads)
 - [Examples](#examples)
 - [fdev.yaml: full control](#fdevyaml-full-control)
@@ -50,12 +51,53 @@ This writes a `Makefile` made for your project:
 It uses `--flavor` only where your project has that flavor (Android
 `productFlavors`, iOS schemes), so the targets work as they are. Edit them
 however you like: the Makefile is yours, and `make dev` works without fdev
-too.
+too (`make` on its own lists them all).
 
 | | |
 |---|---|
 | `fdev init --print` | print it instead, to compare with a Makefile you have |
 | `fdev init --force` | replace the Makefile that's there |
+
+## Edit the Makefile: no programming needed
+
+The Makefile `fdev init` writes has four parts, top to bottom:
+
+1. **A note** on how a command looks, and a link to this guide.
+2. **Settings**: options added to every run or every build.
+3. **The commands**, under *Run*, *Build* and *Tools*.
+4. **fdev's part**, which you can leave alone.
+
+**A command** is two lines: a name, a colon, `##` and what the menu says;
+then, after a **TAB** (the Tab key, not spaces), the command it runs:
+
+```make
+dev: ## Run the dev flavor
+	flutter run --flavor dev -t lib/main_dev.dart $(RUN)
+```
+
+- **Rename it** or change its text on the first line. The menu shows the
+  change the next time fdev starts.
+- **Add one**: copy a command (both lines), then change its name, text and
+  command line. Keep `$(RUN)` at the end of a `flutter run` line: it adds
+  the device fdev asks for, your settings, and fdev's logs.
+- **Remove one**: delete both lines.
+
+**Settings** apply to every command, so you change them once:
+
+```make
+# Added to every run below.
+RUN_OPTIONS = --dart-define=API_URL=https://test.example.com
+
+# Added to every build below.
+BUILD_OPTIONS = --obfuscate --split-debug-info=build/symbols
+```
+
+Builds are release builds, which is what `flutter build` makes by default.
+
+> [!TIP]
+> If a command is missing from fdev's menu, or make says
+> `missing separator`, its second line starts with spaces instead of a TAB. Most editors show the difference when you
+> select the line.
 
 ## The Makefile: what fdev reads
 

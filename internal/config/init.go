@@ -60,10 +60,12 @@ func FindProjects(dir string) []string {
 	return out
 }
 
-// Makefile is a Makefile for a project without one: running and building
-// each of its flavors (or the app, without flavors), and the usual tools,
-// written so that Discover reads it back as the same targets. targets is
-// their names, in order.
+// Makefile is a Makefile for a Flutter project without one: running and
+// building each of its flavors (or the app, without flavors), and the
+// usual tools, written so that Discover reads it back as the same targets.
+// It is meant for anyone to edit, programmer or not: a header on how a
+// command looks, a settings section, one plain command line per target,
+// and make's machinery at the bottom. targets is their names, in order.
 func Makefile(root string) (text string, targets []string) {
 	fl := discoverFlavors(root)
 	gradle := readFirst(root, "android/app/build.gradle", "android/app/build.gradle.kts")
@@ -85,6 +87,9 @@ func Makefile(root string) (text string, targets []string) {
 	// args is a flavor's flags: --flavor where the platform has it, and its
 	// entry point when it has one of its own.
 	args := func(f string, flavorFlag bool) string {
+		if f == "" {
+			return ""
+		}
 		var a []string
 		if flavorFlag {
 			a = append(a, "--flavor "+f)
@@ -103,65 +108,63 @@ func Makefile(root string) (text string, targets []string) {
 		}
 		return strings.Join(out, " ")
 	}
-	const device, logs = "$(if $(DEVICE),-d $(DEVICE))", "$(FDEV_DART_DEFINES)"
-
-	if len(fl.names) == 0 {
-		run = append(run, rule{"run", "Run the app", cmd("flutter run", device, logs)})
-		if web {
-			run = append(run, rule{"web", "Run the app in Chrome", cmd("flutter run -d chrome", logs)})
-		}
-		if android {
-			build = append(build,
-				rule{"build-apk", "A release APK", "flutter build apk --release"},
-				rule{"build-aab", "A release app bundle, for Google Play", "flutter build appbundle --release"})
-		}
-		if iphone {
-			build = append(build, rule{"build-ipa", "A release IPA, for the App Store", "flutter build ipa --release"})
-		}
-		if web {
-			build = append(build, rule{"build-web", "A release web build", "flutter build web --release"})
-		}
+	// Each flavor's run and builds, or the app's without flavors.
+	flavors := slices.Clone(fl.names)
+	if len(flavors) == 0 {
+		flavors = []string{""}
 	}
-	for _, f := range fl.names {
-		iosFlavor := ios["Debug-"+f].id != "" || ios["Release-"+f].id != ""
-		about := "the " + f + " flavor"
-		if info := fl.info[f]; info != nil {
-			for _, fact := range info.Info {
-				if fact.Key == "App" {
-					about += " (" + fact.Value + ")"
-					break
+	for _, f := range flavors {
+		iosFlavor := f != "" && (ios["Debug-"+f].id != "" || ios["Release-"+f].id != "")
+		name := func(prefix string) string { // dev, ios-dev, build-apk-dev; run, ios, build-apk
+			switch {
+			case f == "" && prefix == "":
+				return "run"
+			case f == "":
+				return strings.TrimSuffix(prefix, "-")
+			}
+			return prefix + f
+		}
+		what, of := "the app", ""
+		if f != "" {
+			what, of = "the "+f+" flavor", " of "+f
+			if info := fl.info[f]; info != nil {
+				for _, fact := range info.Info {
+					if fact.Key == "App" {
+						what += " (" + fact.Value + ")"
+						break
+					}
 				}
 			}
 		}
-		run = append(run, rule{f, "Run " + about, cmd("flutter run", args(f, androidFlavors || iosFlavor), device, logs)})
+		run = append(run, rule{name(""), "Run " + what, cmd("flutter run", args(f, androidFlavors || iosFlavor), "$(RUN)")})
 		if android && iphone && iosFlavor {
-			run = append(run, rule{"ios-" + f, "Run " + about + " on an iPhone or the simulator", cmd("flutter run", args(f, true), device, logs)})
+			run = append(run, rule{name("ios-"), "Run " + what + " on an iPhone or the iOS simulator", cmd("flutter run", args(f, true), "$(RUN)")})
 		}
 		if web {
-			run = append(run, rule{"web-" + f, "Run " + about + " in Chrome", cmd("flutter run -d chrome", args(f, false), logs)})
+			run = append(run, rule{name("web-"), "Run " + what + " in Chrome", cmd("flutter run -d chrome", args(f, false), "$(RUN_WEB)")})
 		}
 		if android {
 			build = append(build,
-				rule{"build-apk-" + f, "A release APK of " + f, cmd("flutter build apk --release", args(f, androidFlavors))},
-				rule{"build-aab-" + f, "A release app bundle of " + f + ", for Google Play", cmd("flutter build appbundle --release", args(f, androidFlavors))})
+				rule{name("build-apk-"), "Android app (APK)" + of + ", to install or share", cmd("flutter build apk", args(f, androidFlavors), "$(BUILD)")},
+				rule{name("build-aab-"), "Android app bundle" + of + ", for Google Play", cmd("flutter build appbundle", args(f, androidFlavors), "$(BUILD)")})
 		}
 		if iphone {
-			build = append(build, rule{"build-ipa-" + f, "A release IPA of " + f + ", for the App Store", cmd("flutter build ipa --release", args(f, iosFlavor))})
+			build = append(build, rule{name("build-ipa-"), "iOS app (IPA)" + of + ", for the App Store", cmd("flutter build ipa", args(f, iosFlavor), "$(BUILD)")})
 		}
 		if web {
-			build = append(build, rule{"build-web-" + f, "A release web build of " + f, cmd("flutter build web --release", args(f, false))})
+			build = append(build, rule{name("build-web-"), "Website" + of + ", in build/web", cmd("flutter build web", args(f, false), "$(BUILD)")})
 		}
 	}
 	tools = append(tools,
-		rule{"devices", "List the devices to run on", "flutter devices"},
-		rule{"get", "Get the packages", "flutter pub get"})
+		rule{"devices", "List the phones, simulators and browsers to run on", "flutter devices"},
+		rule{"get", "Download the packages in pubspec.yaml", "flutter pub get"})
 	if strings.Contains(readFirst(root, "pubspec.yaml"), "build_runner") {
-		tools = append(tools, rule{"build-runner", "Generate code with build_runner", "dart run build_runner build --delete-conflicting-outputs"})
+		tools = append(tools, rule{"build-runner", "Generate code (build_runner)", "dart run build_runner build --delete-conflicting-outputs"})
 	}
 	tools = append(tools,
 		rule{"test", "Run the tests", "flutter test"},
-		rule{"analyze", "Analyze the code", "flutter analyze"},
-		rule{"clean", "Delete the build files", "flutter clean"})
+		rule{"analyze", "Check the code for problems", "flutter analyze"},
+		rule{"clean", "Delete the build files, to start fresh", "flutter clean"})
 
 	for _, rs := range [][]rule{run, build, tools} {
 		for _, r := range rs {
@@ -169,29 +172,42 @@ func Makefile(root string) (text string, targets []string) {
 		}
 	}
 	first := targets[0]
+	heading := func(title string) string {
+		return "# ── " + title + " " + strings.Repeat("─", 72-len([]rune(title))) + "\n"
+	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s: the targets fdev offers, written by `fdev init`.\n", title)
-	b.WriteString("#\n# fdev (https://github.com/NaderMozaffari/fdev) shows them in its menu, and\n# make runs them without it too:\n#\n")
-	fmt.Fprintf(&b, "#   make %-22s %s\n", first, "run it; flutter picks the device")
-	fmt.Fprintf(&b, "#   make %-22s %s\n", first+" DEVICE=<id>", "on that device (make devices lists them)")
-	b.WriteString("#\n# Change them and add your own: fdev shows the ## text after a target as\n" +
-		"# its description, asks for a device when the recipe uses DEVICE, and\n" +
-		"# asks the other questions you give it. How:\n# " + GuideURL + "\n\n")
-	b.WriteString("# The device to run on, from `make devices`. Empty lets flutter pick.\nDEVICE ?=\n\n")
-	b.WriteString("# fdev sets FDEV_DART_DEFINES to --dart-define=FDEV_LOGS=true, which turns\n" +
-		"# on its structured logs (see its README); without fdev it is empty.\n\n")
-	line := ".PHONY:"
-	for _, t := range targets {
-		if len(line)+1+len(t) > 76 {
-			b.WriteString(line + " \\\n")
-			line = "\t"
-		} else {
-			line += " "
-		}
-		line += t
-	}
-	b.WriteString(line + "\n")
+	fmt.Fprintf(&b, "# %s: the commands fdev's menu offers.\n", title)
+	b.WriteString(`#
+# fdev (https://github.com/NaderMozaffari/fdev) reads this file every time it
+# starts, and shows each command below in its menu. They work without fdev
+# too: "make ` + first + `" runs ` + first + `, and "make" alone lists them all.
+#
+# Each command is two lines:
+#
+#     ` + first + `: ## ` + run[0].desc + `
+#     →  ` + run[0].recipe + `
+#
+#   - The first line is its name, a colon, then ## and what the menu says.
+#   - The second line is what it runs. → is a TAB (the Tab key), not spaces.
+#
+# To add a command, copy one, then change its name, text and command line.
+# To remove one, delete its two lines. Save, and fdev shows the change.
+#
+# More, with examples: ` + GuideURL + `
+
+`)
+	b.WriteString(heading("Settings"))
+	b.WriteString(`
+# Added to every run below. For example:
+#   RUN_OPTIONS = --dart-define=API_URL=https://test.example.com
+RUN_OPTIONS =
+
+# Added to every build below. For example:
+#   BUILD_OPTIONS = --obfuscate --split-debug-info=build/symbols
+BUILD_OPTIONS =
+
+`)
 	for _, section := range []struct {
 		name  string
 		rules []rule
@@ -199,10 +215,31 @@ func Makefile(root string) (text string, targets []string) {
 		if len(section.rules) == 0 {
 			continue
 		}
-		b.WriteString("\n# ── " + section.name + " " + strings.Repeat("─", 70-len(section.name)) + "\n")
+		b.WriteString(heading(section.name))
 		for _, r := range section.rules {
 			fmt.Fprintf(&b, "\n%s: ## %s\n\t%s\n", r.name, r.desc, r.recipe)
 		}
+		b.WriteString("\n")
 	}
+	b.WriteString(heading("fdev's part: nothing to change below"))
+	b.WriteString(`#
+# RUN is what each run adds: the device to run on (fdev asks; with make,
+# "make ` + first + ` DEVICE=emulator-5554", and "make devices" lists them), your
+# RUN_OPTIONS, and FDEV_DART_DEFINES, which fdev sets to turn on its
+# structured logs. RUN_WEB is the same for Chrome, and BUILD your BUILD_OPTIONS.
+
+DEVICE ?=
+RUN = $(if $(DEVICE),-d $(DEVICE)) $(RUN_OPTIONS) $(FDEV_DART_DEFINES)
+RUN_WEB = $(RUN_OPTIONS) $(FDEV_DART_DEFINES)
+BUILD = $(BUILD_OPTIONS)
+
+# "make" alone lists the commands.
+.DEFAULT_GOAL := help
+help:
+	@awk -F ':.*## ' '/^[A-Za-z0-9_.-]+:.*## / { printf "  make %-22s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+# A command runs even when a file or folder has its name (test/, web/).
+.PHONY: $(MAKECMDGOALS)
+`)
 	return b.String(), targets
 }

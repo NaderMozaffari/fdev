@@ -157,6 +157,21 @@ About page or `fdev update`):
 go build -ldflags "-X main.version=v0.2.0-beta.1" -o fdev .
 ```
 
+### Try project detection and `fdev init`
+
+What fdev does depends on the folder you run it in. To try each case:
+
+| Folder | What fdev does | Try it in |
+|---|---|---|
+| a Flutter project with no Makefile | offers once to write one, then opens the menu | a new `flutter create` app, or a copy of yours without its Makefile |
+| a folder with a Makefile, of any kind of project | shows its targets | any folder with a small Makefile |
+| a Dart package, or a folder with neither | says it recognizes no project here, and why | `dart/fdev_log`, or `/tmp` |
+
+- `fdev init --print` shows the Makefile fdev would write, without writing it.
+- Said **No** to the offer and want it again? Delete fdev's cache folder
+  (above).
+- In a project with the written Makefile, `make` on its own lists its commands.
+
 ## 4. Run the checks
 
 CI runs the same commands on every push and pull request
@@ -229,6 +244,11 @@ Name the branch after what it does: `feature/…` for something new,
 
 **2. Write the code**, then build, try it ([step 3](#3-build-and-run-it))
 and run the checks ([step 4](#4-run-the-checks)).
+
+A new command or option goes in two places: `main.go` runs it, and the
+table in `cli.go` gives its name, options and help, so that `fdev help`
+lists it and a typo of it gets a suggestion. Then add it to the command
+list in both READMEs.
 
 **3. Commit.** Keep each feature or fix in its own commit, and make sure
 every commit builds on its own. Write the subject as a short sentence about
@@ -422,10 +442,13 @@ gh release edit v1.0.0 --prerelease=false --latest      # make it stable
 
 | Path | What's in it |
 |---|---|
-| `main.go` | the commands (`fdev`, `fdev logs`, `fdev wifi`, `fdev update`, `fdev version`) |
+| `main.go` | runs the commands (`fdev`, `logs`, `wifi`, `init`, `update`, `channel`, `version`, `help`) |
+| `cli.go` | the commands' names, options and help: `fdev help`, and the suggestions for typos |
+| `init.go` | `fdev init`, the offer to write a Makefile, and the messages when there's no project |
 | `internal/launcher` | the menu: targets, flavors, questions, progress bar |
 | `internal/logview` | the log viewer: parsing `flutter run` output, filters, the network view |
-| `internal/config` | reading `fdev.yaml` and the Makefile |
+| `internal/config` | finding the project, reading `fdev.yaml` and the Makefile, and writing one (`init.go`; its test checks fdev reads back what it writes) |
+| `docs/CUSTOMIZE.md` | the guide for users to the Makefile and `fdev.yaml`: update it when what fdev reads changes |
 | `internal/theme`, `internal/sprite`, `internal/icon` | colours and themes, the animations, app icons |
 | `internal/devices`, `internal/wifi` | finding devices, Wi-Fi debugging |
 | `internal/update`, `internal/version` | `fdev update` and the version and channel logic |

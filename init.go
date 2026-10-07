@@ -105,16 +105,17 @@ func offerMakefile(cfg *config.Config, st *state.State) *config.Config {
 		}
 	}
 	if len(flavors) > 0 {
-		what = "a run and a build of each flavor (" + strings.Join(flavors, ", ") + ")"
+		what = "a run and a build of each flavor: " + strings.Join(flavors, ", ")
 	}
 	write := true
 	err := huh.NewConfirm().
 		Title("This Flutter project has no Makefile").
 		Description("fdev works its menu out of the project at every start. It can write a\n" +
-			"Makefile in " + fdevversion.Home(cfg.Root) + " instead: " + what + ",\n" +
-			"and the usual tools. It's a plain file anyone can edit to change the menu\n" +
-			"or add commands, and make runs them too.\n\n" +
-			"How to edit it: " + config.GuideURL + "\n\n" +
+			"Makefile for it instead, in " + fdevversion.Home(cfg.Root) + "\n\n" +
+			"  • " + what + "\n" +
+			"  • the usual tools: devices, get, test, analyze, clean\n\n" +
+			"It's a plain file anyone can edit to change the menu or add commands,\n" +
+			"and make runs them too. How: " + config.GuideURL + "\n\n" +
 			"Write the Makefile?").
 		Affirmative("Yes, write it").
 		Negative("No, don't ask again").

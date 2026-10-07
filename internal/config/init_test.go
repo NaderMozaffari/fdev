@@ -2,8 +2,8 @@ package config
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -44,8 +44,9 @@ func TestMakefileReadsBack(t *testing.T) {
 				"clean":          "Tools|||",
 			},
 			recipe: map[string]string{
-				"dev":            "flutter run --flavor dev -t lib/main_dev.dart $(if $(DEVICE),-d $(DEVICE)) $(FDEV_DART_DEFINES)",
-				"build-ipa-prod": "flutter build ipa --release -t lib/main_prod.dart", // iOS has no prod scheme
+				"dev":            "flutter run --flavor dev -t lib/main_dev.dart $(RUN)",
+				"build-ipa-prod": "flutter build ipa -t lib/main_prod.dart $(BUILD)", // iOS has no prod scheme
+				"web-dev":        "flutter run -d chrome -t lib/main_dev.dart $(RUN_WEB)",
 			},
 		},
 		{
@@ -60,7 +61,7 @@ func TestMakefileReadsBack(t *testing.T) {
 				"build-aab": "Build||Android|",
 				"get":       "Tools|||",
 			},
-			recipe: map[string]string{"run": "flutter run $(if $(DEVICE),-d $(DEVICE)) $(FDEV_DART_DEFINES)"},
+			recipe: map[string]string{"run": "flutter run $(RUN)", "build-apk": "flutter build apk $(BUILD)"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -110,9 +111,20 @@ func TestMakefileReadsBack(t *testing.T) {
 					t.Errorf("%s: want recipe %q in\n%s", n, want, text)
 				}
 			}
-			if runtime.GOOS != "windows" {
-				if _, ok := got["build-ipa-prod"]; tc.name == "flavors" && !ok && runtime.GOOS == "darwin" {
-					t.Error("no build-ipa-prod")
+			// make runs it as fdev reads it: the device, the options, the logs.
+			if _, err := exec.LookPath("make"); err == nil {
+				first := names[0]
+				out, err := exec.Command("make", "-n", "-C", root, first, "DEVICE=emulator-5554", "RUN_OPTIONS=--x", "FDEV_DART_DEFINES=--y").CombinedOutput()
+				if err != nil || !strings.Contains(string(out), "flutter run") || !strings.Contains(string(out), "-d emulator-5554 --x --y") {
+					t.Errorf("make -n %s: %v\n%s", first, err, out)
+				}
+				out, err = exec.Command("make", "-s", "-C", root).CombinedOutput()
+				if err != nil || !strings.Contains(string(out), "make "+first+" ") || strings.Contains(string(out), "make help") {
+					t.Errorf("make (the list): %v\n%s", err, out)
+				}
+				must(t, os.MkdirAll(filepath.Join(root, "test"), 0o755))
+				if out, err := exec.Command("make", "-n", "-C", root, "test").CombinedOutput(); err != nil || !strings.Contains(string(out), "flutter test") {
+					t.Errorf("make -n test, with a test/ folder: %v\n%s", err, out)
 				}
 			}
 		})
