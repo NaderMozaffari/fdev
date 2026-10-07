@@ -117,9 +117,16 @@ func runUpdate(args []string) int {
 	case fdevversion.Stable:
 		beta = false
 	}
-	want := ""
-	for _, a := range args {
+	want, local := "", ""
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		switch {
+		case a == "--local":
+			local = "."
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				local = args[i+1]
+				i++
+			}
 		case a == "--beta":
 			beta = true
 		case a == "--stable":
@@ -135,6 +142,17 @@ func runUpdate(args []string) int {
 				want = "v" + want
 			}
 		}
+	}
+	if local != "" {
+		if want != "" {
+			fmt.Fprintln(os.Stderr, "fdev update: --local builds the source; it takes a folder, not a version")
+			return 2
+		}
+		if err := update.Local(local, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "fdev update:", err)
+			return 1
+		}
+		return 0
 	}
 	err := update.Run(update.Options{Repo: repo, Current: appVersion(), Version: want, Beta: beta, Out: os.Stdout})
 	if err != nil {

@@ -64,7 +64,7 @@ git checkout beta
 
 ```sh
 go build -o fdev .
-./fdev version        # یک نسخه‌ی توسعه نشان می‌دهد، مثل v0.0.0-2026...-07c1a2b
+./fdev version        # fdev dev·07c1a2b (built from source, with uncommitted changes)
 ```
 
 ### امتحان بدون Flutter (پروژه‌ی دمو)
@@ -83,14 +83,65 @@ PATH="$PWD/../bin:$PATH" ../../../fdev
 درخواست‌های شبکه و رنگ‌ها و بقیه‌چیز، بدون اینکه چیز واقعی‌ای اجرا شود.
 با `q` یا `ctrl+c` خارج شوید.
 
-### امتحان روی یک پروژه‌ی واقعی Flutter
+### استفاده از نسخه‌ی خودتان در پروژه‌های خودتان
 
-نسخه‌ای را که ساخته‌اید با مسیر کاملش اجرا کنید تا با `fdev` نصب‌شده‌ی
-قبلی اشتباه نشود:
+برای اینکه تغییرتان را در پروژه‌های واقعی Flutter خودتان امتحان کنید،
+نسخه‌ای را که ساخته‌اید جای `fdev` نصب‌شده بگذارید تا هر جا `fdev` بزنید
+همان اجرا شود. یکی از این روش‌ها را انتخاب کنید:
+
+**۱. یک خط، از داخل کلون (پیشنهادی)**
 
 ```sh
+cd ~/path/to/fdev
+go run . update --local
+```
+
+```
+building fdev from ~/path/to/fdev...
+✓ installed fdev dev·07c1a2b (built from source, with uncommitted changes) at ~/.fdev/bin/fdev
+  fdev update goes back to the newest release, fdev update --beta to the newest beta
+```
+
+این دستور کد داخل کلون شما را می‌سازد و جای `fdev` موجود در PATH می‌گذارد.
+حتی اگر `fdev` نصب‌شده‌تان یک نسخه‌ی قدیمی باشد هم کار می‌کند. از دفعه‌ی
+دوم، `fdev update --local` از داخل کلون (یا
+`fdev update --local ~/path/to/fdev` از هر جای دیگر) همین کار را می‌کند.
+
+**۲. با `go build`، در پوشه‌ای که خودتان انتخاب می‌کنید**
+
+```sh
+cd ~/path/to/fdev && go build -o ~/bin/fdev .
+```
+
+`go build` وقتی موفق باشد چیزی چاپ نمی‌کند. با `fdev version` بررسی کنید؛
+باید `dev·<commit>` نشان دهد. `~/bin` باید در PATH باشد و **قبل از** هر
+`fdev` دیگری: `which -a fdev` همه را نشان می‌دهد و اولی همان است که اجرا
+می‌شود.
+
+**۳. با `go install`**
+
+```sh
+cd ~/path/to/fdev && go install .
+```
+
+Go آن را در `$(go env GOPATH)/bin` (معمولاً `~/go/bin`) می‌گذارد. نکته‌ی
+PATH اینجا هم صدق می‌کند.
+
+**۴. بدون نصب کردن**
+
+نسخه‌ی ساخته‌شده را با مسیر کاملش اجرا کنید:
+
+```sh
+cd ~/path/to/fdev && go build -o fdev .
 cd ~/path/to/your/flutter_app
 ~/path/to/fdev/fdev
+```
+
+**برگشتن به نسخه‌ی منتشرشده** وقتی کارتان تمام شد:
+
+```sh
+fdev update            # جدیدترین نسخه‌ی پایدار
+fdev update --beta     # یا جدیدترین بتا
 ```
 
 ### تنظیمات به‌دردبخور هنگام توسعه

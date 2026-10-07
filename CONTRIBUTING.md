@@ -58,7 +58,7 @@ committed):
 
 ```sh
 go build -o fdev .
-./fdev version        # prints a dev version such as v0.0.0-2026...-07c1a2b
+./fdev version        # fdev dev·07c1a2b (built from source, with uncommitted changes)
 ```
 
 ### Try it without Flutter (demo project)
@@ -77,14 +77,64 @@ Pick a target and you get the full launcher and log viewer, with network
 requests, colours and everything, and nothing real runs. Press `q` or
 `ctrl+c` to quit.
 
-### Try it on a real Flutter project
+### Use your build in your own projects
 
-Call your build by its full path, so you don't mix it up with an `fdev`
-you installed earlier:
+To try your change in your real Flutter projects, put your build where
+`fdev` is installed, so typing `fdev` anywhere runs it. Pick one of these:
+
+**1. One line, from your clone (recommended)**
 
 ```sh
+cd ~/path/to/fdev
+go run . update --local
+```
+
+```
+building fdev from ~/path/to/fdev...
+✓ installed fdev dev·07c1a2b (built from source, with uncommitted changes) at ~/.fdev/bin/fdev
+  fdev update goes back to the newest release, fdev update --beta to the newest beta
+```
+
+This builds the code in your clone and replaces the `fdev` on your PATH.
+It works even if the `fdev` you have installed is an older release.
+After the first time, `fdev update --local` from your clone (or
+`fdev update --local ~/path/to/fdev` from anywhere) does the same.
+
+**2. With `go build`, to a folder of your choice**
+
+```sh
+cd ~/path/to/fdev && go build -o ~/bin/fdev .
+```
+
+`go build` prints nothing when it works. Check with `fdev version`, which
+should say `dev·<commit>`. `~/bin` has to be on your PATH, and **before**
+any other `fdev`: `which -a fdev` lists them all, and the first one is
+the one that runs.
+
+**3. With `go install`**
+
+```sh
+cd ~/path/to/fdev && go install .
+```
+
+Go puts it in `$(go env GOPATH)/bin` (usually `~/go/bin`). The same PATH
+note applies.
+
+**4. Without installing anything**
+
+Call the build by its full path:
+
+```sh
+cd ~/path/to/fdev && go build -o fdev .
 cd ~/path/to/your/flutter_app
 ~/path/to/fdev/fdev
+```
+
+**Back to a release** when you're done:
+
+```sh
+fdev update            # the newest stable release
+fdev update --beta     # or the newest beta
 ```
 
 ### Handy settings while developing

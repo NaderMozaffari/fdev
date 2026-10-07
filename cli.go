@@ -49,8 +49,15 @@ var commands = []command{
 		options: []option{
 			{"--beta", "betas too"},
 			{"--stable", "stable releases only"},
+			{"--local [folder]", "build fdev from its source (a clone, here by default) and install that"},
 		},
-		examples: []string{"fdev update", "fdev update --beta", "fdev update v0.2.0-beta.1"},
+		examples: []string{
+			"fdev update",
+			"fdev update --beta",
+			"fdev update v0.2.0-beta.1",
+			"go run . update --local            # in a clone of fdev: try your changes everywhere",
+			"fdev update --local ~/code/fdev",
+		},
 	},
 	{name: "version", summary: "print fdev's version"},
 	{name: "help", args: "[command]", summary: "these commands, or one command's options"},
@@ -224,11 +231,13 @@ func commandNames() []string {
 	return out
 }
 
+// optionFlags is the flags opts name: "-h, --help" is -h and --help,
+// "--local [folder]" is --local.
 func optionFlags(opts []option) []string {
 	var out []string
 	for _, o := range opts {
 		for f := range strings.SplitSeq(o.flag, ",") {
-			out = append(out, strings.TrimSpace(f))
+			out = append(out, strings.Fields(f)[0])
 		}
 	}
 	return out

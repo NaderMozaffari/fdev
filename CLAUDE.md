@@ -13,6 +13,7 @@ GOOS=windows go vet ./... && GOOS=windows go build -o /dev/null .   # CI also ch
 go test ./internal/logview -run TestHTTPRecords      # a single test
 FDEV_SHOW=1 go test ./internal/launcher -run TestScreensFit -v   # print the screens launcher tests draw
 go build -ldflags "-X main.version=v0.2.0-beta.1" -o fdev .   # build with a release-like version
+go run . update --local                  # build this checkout and install it over the fdev on PATH
 
 cd dart/fdev_log && dart pub get && dart analyze && dart test   # the Dart package
 ```

@@ -120,11 +120,14 @@ func Run(o Options) error {
 	if err != nil {
 		return err
 	}
-	exe, err := replace(bin)
+	exe, err := installed()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(o.Out, "fdev %s → %s (%s)\n", o.Current, rel.Tag, exe)
+	if err := replace(exe, bin); err != nil {
+		return err
+	}
+	fmt.Fprintf(o.Out, "fdev %s → %s (%s)\n", version.Short(), rel.Tag, version.Home(exe))
 	return nil
 }
 
@@ -290,39 +293,54 @@ func extract(data []byte, name string) ([]byte, error) {
 	}
 }
 
-// replace puts bin where the running fdev is. Windows won't overwrite a
-// running program but lets it be renamed, so it moves aside first.
-func replace(bin []byte) (string, error) {
+// installed is the fdev to replace: the running one, or under `go run`,
+// which runs a build in a temporary folder, the fdev on the PATH.
+func installed() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	if exe, err = filepath.EvalSymlinks(exe); err != nil {
-		return "", err
+	if strings.Contains(exe, string(filepath.Separator)+"go-build") {
+		if exe, err = exec.LookPath(exeName()); err != nil {
+			return "", errors.New("there is no fdev on your PATH to replace: install a release first (see the README), or build one where you want it: go build -o ~/bin/fdev .")
+		}
 	}
+	return filepath.EvalSymlinks(exe)
+}
+
+func exeName() string {
+	if runtime.GOOS == "windows" {
+		return "fdev.exe"
+	}
+	return "fdev"
+}
+
+// replace puts bin at exe. Windows won't overwrite a running program but
+// lets it be renamed, so it moves aside first.
+func replace(exe string, bin []byte) error {
 	tmp := exe + ".new"
 	if err := os.WriteFile(tmp, bin, 0o755); err != nil {
 		if errors.Is(err, os.ErrPermission) {
-			return "", fmt.Errorf("can't write to %s: run it with the rights to change it (sudo), or reinstall", filepath.Dir(exe))
+			return fmt.Errorf("can't write to %s: run it with the rights to change it (sudo), or reinstall", filepath.Dir(exe))
 		}
-		return "", err
+		return err
 	}
 	if runtime.GOOS == "windows" {
 		old := exe + ".old"
 		_ = os.Remove(old)
 		if err := os.Rename(exe, old); err != nil {
 			os.Remove(tmp)
-			return "", err
+			return err
 		}
 		if err := os.Rename(tmp, exe); err != nil {
 			_ = os.Rename(old, exe)
-			return "", err
+			return err
 		}
-		return exe, nil
+		return nil
 	}
 	if err := os.Rename(tmp, exe); err != nil {
 		os.Remove(tmp)
-		return "", err
+		return err
 	}
-	return exe, nil
+	return nil
 }
