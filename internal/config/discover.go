@@ -39,7 +39,7 @@ func Discover(root string) *Config {
 		cfg.Groups, cfg.Asks = makeTargets(root, mk, fl)
 		cfg.Source = "Makefile"
 	}
-	if len(cfg.Groups) == 0 {
+	if len(cfg.Groups) == 0 && IsFlutter(root) {
 		def := flutterDefaults()
 		cfg.Groups = def.Groups
 		for i := len(fl.names) - 1; i >= 0; i-- {
@@ -357,6 +357,15 @@ func humanize(s string) string {
 		}
 	}
 	return b.String()
+}
+
+var flutterSDK = regexp.MustCompile(`(?m)^\s+sdk:\s*["']?flutter["']?\s*$`)
+
+// IsFlutter reports whether dir is a Flutter project: its pubspec.yaml
+// depends on the Flutter SDK. A plain Dart package isn't one.
+func IsFlutter(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, "pubspec.yaml"))
+	return err == nil && flutterSDK.Match(data)
 }
 
 func pubspecName(root string) string {

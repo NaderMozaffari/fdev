@@ -15,16 +15,19 @@ descriptions, and the questions they ask before they run.
 
 ## Where fdev gets its targets
 
-fdev looks in the project root (the folder with `pubspec.yaml`) and uses
+fdev looks in the folder you run it in, then the ones above it, and uses
 the first of these it finds:
 
 | | What fdev does |
 |---|---|
 | **`fdev.yaml`** | uses it exactly as written ([below](#fdevyaml-full-control)) |
 | **`Makefile`** | reads its targets, and works out their group, flavor, platform and questions |
-| **neither** | makes up `flutter run` for each flavor, the usual builds, `pub get`, `test`, … |
+| **neither**, in a Flutter project | makes up `flutter run` for each flavor, the usual builds, `pub get`, `test`, … |
 
-Without either file, fdev offers once to write a Makefile for you.
+Without either file, fdev offers once to write a Makefile for a Flutter
+project. A Makefile works in a project of any kind (Go, Node, a Dart
+package, …): fdev shows its targets, all under **Tools** unless they run
+`flutter run` or `flutter build`.
 
 ## Start with `fdev init`
 

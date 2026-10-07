@@ -96,6 +96,9 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, "fdev:", err)
 		return 1
 	}
+	if len(cfg.Targets()) == 0 {
+		return noTargets(cfg)
+	}
 	start := strings.Join(args, " ")
 	if start != "" && cfg.Target(start) == nil {
 		var known []string

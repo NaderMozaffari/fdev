@@ -274,7 +274,10 @@ To help with fdev (run it from source, open a pull request, or make a release), 
 ## Use
 
 Run `fdev` anywhere inside a project. It finds the project root by looking
-up for `fdev.yaml`, then a `Makefile` or `pubspec.yaml`.
+up for `fdev.yaml`, then a `Makefile` or a Flutter project's `pubspec.yaml`
+(one that uses the Flutter SDK; a plain Dart package isn't one). A
+`Makefile` works in a project of any kind, Flutter or not: fdev shows its
+targets.
 
 ```sh
 fdev                     # the menu

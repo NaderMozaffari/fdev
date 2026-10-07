@@ -139,3 +139,53 @@ func TestNeedsMakefileAndFindProjects(t *testing.T) {
 		t.Error("a project with neither Makefile nor fdev.yaml should need one")
 	}
 }
+
+func TestWhatIsAProject(t *testing.T) {
+	write := func(dir, path, text string) {
+		t.Helper()
+		must(t, os.MkdirAll(filepath.Dir(filepath.Join(dir, path)), 0o755))
+		must(t, os.WriteFile(filepath.Join(dir, path), []byte(text), 0o644))
+	}
+
+	// A Dart package isn't a Flutter project: no menu of flutter commands.
+	dart := t.TempDir()
+	write(dart, "pubspec.yaml", "name: tool\ndescription: Works with flutter: and dart.\ndependencies:\n  path: any\n")
+	if IsFlutter(dart) {
+		t.Error("a Dart package counts as Flutter")
+	}
+	if _, err := Load(dart); err != ErrNoProject {
+		t.Errorf("Load(Dart package) = %v, want ErrNoProject", err)
+	}
+
+	// A Makefile is a project of any kind, with only its own targets.
+	mk := t.TempDir()
+	write(mk, "Makefile", "# Build the binary\nbuild:\n\tgo build ./...\n")
+	cfg, err := Load(mk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Flutter || cfg.NeedsMakefile() {
+		t.Errorf("Flutter %v, NeedsMakefile %v for a Go project", cfg.Flutter, cfg.NeedsMakefile())
+	}
+	if ts := cfg.Targets(); len(ts) != 1 || ts[0].Name != "build" || ts[0].Desc != "Build the binary" {
+		t.Errorf("targets %+v", ts)
+	}
+
+	// A Makefile without targets has nothing to run, rather than flutter's.
+	empty := t.TempDir()
+	write(empty, "Makefile", "X = 1\n")
+	if cfg, err := Load(empty); err != nil || len(cfg.Targets()) != 0 {
+		t.Errorf("Load(empty Makefile) = %v targets, %v", len(cfg.Targets()), err)
+	}
+
+	// A Flutter project needs no Makefile, and is offered one.
+	app := t.TempDir()
+	write(app, "pubspec.yaml", "name: app\ndependencies:\n  flutter:\n    sdk: flutter\n")
+	cfg, err = Load(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Flutter || !cfg.NeedsMakefile() || len(cfg.Targets()) == 0 {
+		t.Errorf("Flutter %v, NeedsMakefile %v, %d targets", cfg.Flutter, cfg.NeedsMakefile(), len(cfg.Targets()))
+	}
+}

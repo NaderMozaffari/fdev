@@ -37,6 +37,9 @@ type Config struct {
 	// Version and Build are the app's, from pubspec.yaml.
 	Version string `yaml:"-"`
 	Build   string `yaml:"-"`
+	// Flutter is whether the project is a Flutter app or package, not
+	// just a folder with a Makefile.
+	Flutter bool `yaml:"-"`
 	// Warning is something fdev couldn't work out.
 	Warning string `yaml:"-"`
 }
@@ -329,6 +332,7 @@ func Load(dir string) (*Config, error) {
 		cfg.Source = "auto · " + cfg.Source
 	}
 	cfg.Root = root
+	cfg.Flutter = IsFlutter(root)
 	if cfg.Title == "" {
 		cfg.Title = filepath.Base(root)
 	}
@@ -403,7 +407,7 @@ func findRoot(dir string) (root, file string) {
 				return d, name
 			}
 		}
-		if fallback == "" && (exists(filepath.Join(d, "Makefile")) || exists(filepath.Join(d, "pubspec.yaml"))) {
+		if fallback == "" && (exists(filepath.Join(d, "Makefile")) || IsFlutter(d)) {
 			fallback = d
 		}
 		if parent := filepath.Dir(d); parent == d {

@@ -140,7 +140,7 @@ func help(w io.Writer) {
 		{"fdev <target>", "start that target straight away"},
 		{"fdev <command> [options]", "one of the commands below"},
 	}))
-	b.WriteString(faint.Render("  fdev finds the project by looking up for fdev.yaml, a Makefile or pubspec.yaml.") + "\n")
+	b.WriteString(faint.Render("  fdev finds the project by looking up for fdev.yaml, a Makefile or a Flutter project.") + "\n")
 	b.WriteString("\n" + heading.Render("Commands") + "\n")
 	var rows [][2]string
 	for _, c := range commands {

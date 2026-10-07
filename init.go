@@ -42,6 +42,11 @@ func runInit(args []string) int {
 		fmt.Fprintln(os.Stderr, "fdev:", err)
 		return 1
 	}
+	if !cfg.Flutter {
+		lipgloss.Fprintln(os.Stderr, red.Render("fdev init: "+fdevversion.Home(cfg.Root)+" isn't a Flutter project"))
+		lipgloss.Fprintln(os.Stderr, "fdev init writes Makefiles for Flutter projects. This one has a Makefile, and fdev shows its targets.")
+		return 1
+	}
 	text, _ := config.Makefile(cfg.Root)
 	if show {
 		fmt.Print(text)
@@ -84,32 +89,34 @@ func writeMakefile(root string) error {
 	return nil
 }
 
-// offerMakefile asks, once per project, to write a Makefile for a project
-// that has none, so its targets can be changed (and run with make). It
-// returns the config to go on with: read again from the Makefile, if one
-// was written.
+// offerMakefile asks, once per project, to write a Makefile for a Flutter
+// project that has none, so its menu can be changed (and run with make).
+// It returns the config to go on with: read again from the Makefile, if
+// one was written.
 func offerMakefile(cfg *config.Config, st *state.State) *config.Config {
 	if st.NoMakefile || !cfg.NeedsMakefile() || !term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd()) {
 		return cfg
 	}
-	flavors := "the app"
-	if len(cfg.Flavors) > 0 {
-		var names []string
-		for _, t := range cfg.Targets() {
-			if t.Flavor != "" && !slices.Contains(names, t.Flavor) {
-				names = append(names, t.Flavor)
-			}
+	what := "a run and a build of the app"
+	var flavors []string
+	for _, t := range cfg.Targets() {
+		if t.Flavor != "" && !slices.Contains(flavors, t.Flavor) {
+			flavors = append(flavors, t.Flavor)
 		}
-		flavors = "the flavors " + strings.Join(names, ", ")
+	}
+	if len(flavors) > 0 {
+		what = "a run and a build of each flavor (" + strings.Join(flavors, ", ") + ")"
 	}
 	write := true
 	err := huh.NewConfirm().
-		Title("Write a Makefile for " + cfg.Title + "?").
-		Description("This project has no Makefile, so fdev works its targets out each time.\n" +
-			"A Makefile in " + fdevversion.Home(cfg.Root) + " lets you change them and add your own:\n" +
-			"running and building " + flavors + ", and the usual tools. make runs them too.\n" +
-			"fdev init writes it any time.").
-		Affirmative("Write it").
+		Title("This Flutter project has no Makefile").
+		Description("fdev works its menu out of the project at every start. It can write a\n" +
+			"Makefile in " + fdevversion.Home(cfg.Root) + " instead: " + what + ",\n" +
+			"and the usual tools. It's a plain file anyone can edit to change the menu\n" +
+			"or add commands, and make runs them too.\n\n" +
+			"How to edit it: " + config.GuideURL + "\n\n" +
+			"Write the Makefile?").
+		Affirmative("Yes, write it").
 		Negative("No, don't ask again").
 		Value(&write).
 		Run()
@@ -119,6 +126,7 @@ func offerMakefile(cfg *config.Config, st *state.State) *config.Config {
 	if !write {
 		st.NoMakefile = true
 		st.Save()
+		lipgloss.Println(faint.Render("fdev init writes it any time. How to set fdev up: " + config.GuideURL))
 		return cfg
 	}
 	if err := writeMakefile(cfg.Root); err != nil {
@@ -133,13 +141,23 @@ func offerMakefile(cfg *config.Config, st *state.State) *config.Config {
 	return cfg
 }
 
-// noProject explains that fdev runs in a Flutter project, and points to
-// the ones below dir, if any.
+// noProject says fdev knows no project at dir, what it looked for, and
+// where to go: the Flutter projects below dir, if any.
 func noProject(dir string) int {
-	lipgloss.Fprintln(os.Stderr, red.Render("fdev: no Flutter project here"))
-	lipgloss.Fprintln(os.Stderr, "fdev runs in a Flutter project: the folder with pubspec.yaml, or one inside it.")
-	if found := config.FindProjects(dir); len(found) > 0 {
-		lipgloss.Fprintln(os.Stderr, "\nFlutter projects below this folder:")
+	e := os.Stderr
+	lipgloss.Fprintln(e, red.Render("fdev: no project recognized here"))
+	lipgloss.Fprintln(e, "\nfdev looked in "+fdevversion.Home(dir)+" and the folders above it for")
+	lipgloss.Fprintln(e, "  • a Flutter project: pubspec.yaml with the Flutter SDK, or")
+	lipgloss.Fprintln(e, "  • a Makefile, in a project of any kind: fdev shows its targets in a menu,")
+	lipgloss.Fprintln(e, "and found neither.")
+	found := config.FindProjects(dir)
+	switch pub := nearestPubspec(dir); {
+	case pub != "":
+		lipgloss.Fprintln(e, "\nThis is a Dart package, not a Flutter project ("+fdevversion.Home(pub)+").")
+		lipgloss.Fprintln(e, "fdev runs Flutter projects for now. To use it here, add a Makefile with the")
+		lipgloss.Fprintln(e, "package's commands (dart test, dart analyze, …): fdev shows them in its menu.")
+	case len(found) > 0:
+		lipgloss.Fprintln(e, "\nFlutter projects below this folder:")
 		for _, p := range found {
 			rel, err := filepath.Rel(dir, p)
 			if err != nil {
@@ -148,11 +166,50 @@ func noProject(dir string) int {
 			if strings.ContainsAny(rel, " '\"") {
 				rel = `"` + rel + `"`
 			}
-			lipgloss.Fprintln(os.Stderr, "  "+name.Render("cd "+rel+" && fdev"))
+			lipgloss.Fprintln(e, "  "+name.Render("cd "+rel+" && fdev"))
 		}
-	} else {
-		lipgloss.Fprintln(os.Stderr, "Go to your project's folder (cd path/to/your_app) and run fdev there.")
+	default:
+		lipgloss.Fprintln(e, "\nRun fdev in your project's folder.")
 	}
-	lipgloss.Fprintln(os.Stderr, "\n"+faint.Render("How fdev reads a project, and how to set it up: "+config.GuideURL))
+	lipgloss.Fprintln(e, "\n"+faint.Render("How to set fdev up for a project: "+config.GuideURL))
 	return 1
+}
+
+// nearestPubspec is the pubspec.yaml in dir or above it, when it is a
+// Dart package's rather than a Flutter project's.
+func nearestPubspec(dir string) string {
+	for d := dir; ; d = filepath.Dir(d) {
+		if p := filepath.Join(d, "pubspec.yaml"); fileExists(p) {
+			if config.IsFlutter(d) {
+				return ""
+			}
+			return p
+		}
+		if filepath.Dir(d) == d {
+			return ""
+		}
+	}
+}
+
+// noTargets says the project's Makefile (or fdev.yaml) has nothing to run.
+func noTargets(cfg *config.Config) int {
+	file := filepath.Join(cfg.Root, "Makefile")
+	for _, f := range config.FileNames {
+		if p := filepath.Join(cfg.Root, f); fileExists(p) {
+			file = p
+		}
+	}
+	lipgloss.Fprintln(os.Stderr, red.Render("fdev: nothing to run in "+fdevversion.Home(file)))
+	if filepath.Base(file) == "Makefile" {
+		lipgloss.Fprintln(os.Stderr, "\nfdev shows a Makefile's targets: a name and a colon, and on the next line,")
+		lipgloss.Fprintln(os.Stderr, "after a TAB, the command it runs. This one has none yet:")
+		lipgloss.Fprintln(os.Stderr, "\n  "+name.Render("test: ## Run the tests")+"\n  "+name.Render("\tgo test ./..."))
+	}
+	lipgloss.Fprintln(os.Stderr, "\n"+faint.Render("How to write them, with examples: "+config.GuideURL))
+	return 1
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

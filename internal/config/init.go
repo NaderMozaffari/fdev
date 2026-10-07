@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,13 +16,17 @@ const (
 	GuideURLFa = "https://github.com/NaderMozaffari/fdev/blob/main/docs/CUSTOMIZE.fa.md"
 )
 
-// ErrNoProject is Load's error outside a Flutter project.
-var ErrNoProject = errors.New("no fdev.yaml, Makefile or pubspec.yaml here or in a parent directory")
+// ErrNoProject is Load's error where fdev knows no project: no fdev.yaml,
+// Makefile or Flutter project here or in a folder above.
+var ErrNoProject = errors.New("no fdev.yaml, Makefile or Flutter project here or in a parent directory")
 
-// NeedsMakefile reports whether fdev made the project's targets up from
-// the project itself, with neither an fdev.yaml nor a Makefile to read:
-// what `fdev init` is for.
+// NeedsMakefile reports whether fdev made a Flutter project's targets up
+// from the project itself, with neither an fdev.yaml nor a Makefile to
+// read: what `fdev init` is for.
 func (c *Config) NeedsMakefile() bool {
+	if !c.Flutter {
+		return false
+	}
 	for _, f := range append([]string{"Makefile", "makefile", "GNUmakefile"}, FileNames...) {
 		if exists(filepath.Join(c.Root, f)) {
 			return false
@@ -49,10 +52,8 @@ func FindProjects(dir string) []string {
 			}
 			return nil
 		}
-		if d.Name() == "pubspec.yaml" && len(out) < 10 {
-			if data, err := os.ReadFile(path); err == nil && strings.Contains(string(data), "flutter:") {
-				out = append(out, filepath.Dir(path))
-			}
+		if d.Name() == "pubspec.yaml" && len(out) < 10 && IsFlutter(filepath.Dir(path)) {
+			out = append(out, filepath.Dir(path))
 		}
 		return nil
 	})
