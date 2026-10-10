@@ -14,7 +14,7 @@ import (
 	"charm.land/huh/v2"
 )
 
-// Saving some of the logs (⤓ save, or s with logs selected): a subject and
+// Saving some of the logs (⤓ save, or save… in a log's menu): a subject and
 // tags to find them by, which logs, and the format.
 //
 //	Subject   login fails after a token refresh
@@ -44,8 +44,9 @@ const (
 	formatJSON   = "json"
 )
 
-func (m *Model) openSave() tea.Cmd {
-	sel := m.selected()
+// openSave opens the form; sel is the logs selected, if any.
+func (m *Model) openSave(sel []*Entry) tea.Cmd {
+	m.saveSel = sel
 	shown := m.shownEntries()
 	var marked []*Entry
 	for _, e := range m.entries {
@@ -98,17 +99,18 @@ func (m *Model) updateSaveForm(msg tea.Msg) tea.Cmd {
 	}
 	switch m.saveForm.State {
 	case huh.StateAborted:
-		m.saveForm = nil
+		m.saveForm, m.saveSel = nil, nil
 		m.resize()
 		return nil
 	case huh.StateCompleted:
 		m.saveForm = nil
 		m.resize()
-		if path, err := m.saveSome(m.saveAns); err != nil {
+		path, err := m.saveSome(m.saveAns)
+		m.saveSel = nil
+		if err != nil {
 			m.setStatus("✘ can't save: " + err.Error())
 		} else {
 			m.setStatus("✓ saved " + path)
-			m.unselect()
 		}
 		return nil
 	}
@@ -119,7 +121,7 @@ func (m *Model) updateSaveForm(msg tea.Msg) tea.Cmd {
 func (m *Model) saveEntries(what string) []*Entry {
 	switch what {
 	case saveSelected:
-		return m.selected()
+		return m.saveSel
 	case saveShown:
 		return m.shownEntries()
 	case saveMarked:

@@ -9,9 +9,8 @@ sleep 1.2s
 mark values
 key esc
 sleep 0.5s
-key tab
-key up 3
-key shift+up
+click 30 20 ctrl
+click 30 22 ctrl shift
 sleep 1s
 mark select
 key esc

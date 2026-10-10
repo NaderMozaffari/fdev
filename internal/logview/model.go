@@ -93,11 +93,11 @@ type (
 )
 
 type keyMap struct {
-	Reload, Restart, Quit, Back                key.Binding
-	Scroll, Page, Ends                         key.Binding
-	Filter, Toggles, Parts, Open, Mouse, Help  key.Binding
-	Look, Save, Wipe, Full, Window             key.Binding
-	Select, Range, Marks, Values, Expand, Keep key.Binding
+	Reload, Restart, Quit, Back               key.Binding
+	Scroll, Page, Ends                        key.Binding
+	Filter, Toggles, Parts, Open, Mouse, Help key.Binding
+	Look, Save, Wipe, Full, Window            key.Binding
+	Select, Marks, Values, Expand, Keep       key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -123,8 +123,7 @@ func newKeyMap() keyMap {
 		Full:    b([]string{"z"}, "z", "full screen"),
 		Window:  b([]string{"e"}, "e", "open a long log in a window"),
 		Save:    b([]string{"ctrl+s"}, "ctrl+s", "save log"),
-		Select:  b([]string{"tab"}, "tab", "select a log: copy, pin, track…"),
-		Range:   b([]string{"shift+up", "shift+down"}, "shift+↑/↓", "select a range"),
+		Select:  b([]string{"ctrl+click"}, "ctrl+click", "a log: copy, pin, track…"), // a mouse action
 		Marks:   b([]string{"[", "]"}, "[ ]", "bookmarks"),
 		Values:  b([]string{"k"}, "k", "tokens & values"),
 		Expand:  b([]string{"x"}, "x", "expand all calls"),
@@ -201,20 +200,25 @@ type Model struct {
 	filter    string       // folded
 	terms     []filterTerm // the filter, read (filter.go)
 
-	// Selected logs (select.go): the cursor, and the other end of a range.
-	sel, anchor *Entry
-	pins        []*Entry // pinned, in the order they were (sticky.go)
-	tracks      []*track
-	values      []*kept // tokens and such, at hand (values.go, vault.go)
-	vault       *vault
-	saveForm    *huh.Form // saving some logs (saveform.go)
-	saveAns     saveAnswer
-	expandAll   bool // x: every network log open
-	mouse       bool
-	toast       string
-	toastUntil  time.Time
-	status      string
-	statusUntil time.Time
+	// Selected logs (select.go): the cursor, the other end of a range, and
+	// where their menu was opened.
+	sel, anchor  *Entry
+	menuX, menuY int
+	menuFollow   bool     // the logs followed the output before the menu opened
+	jumped       *Entry   // the log [ or ] showed last
+	pins         []*Entry // pinned, in the order they were (sticky.go)
+	tracks       []*track
+	values       []*kept // tokens and such, at hand (values.go, vault.go)
+	vault        *vault
+	saveForm     *huh.Form // saving some logs (saveform.go)
+	saveAns      saveAnswer
+	saveSel      []*Entry // the logs selected when the form opened
+	expandAll    bool     // x: every network log open
+	mouse        bool
+	toast        string
+	toastUntil   time.Time
+	status       string
+	statusUntil  time.Time
 }
 
 // term is where the command runs: a pty, or pipes on Windows (term_*.go).
@@ -373,8 +377,6 @@ func (m *Model) headerRows() int {
 
 func (m *Model) helpRows() int {
 	switch {
-	case m.sel != nil && !m.filtering && !m.overlay():
-		return 1 // the selection's actions
 	case m.help.ShowAll && !m.filtering:
 		return lipgloss.Height(m.help.FullHelpView(m.fullHelp()))
 	case m.full && !m.filtering:
@@ -424,6 +426,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = max(msg.Width, 20), max(msg.Height, 8)
+		if m.sel != nil {
+			m.unselect()
+		}
 		m.resize()
 		m.resizePty()
 	case outputMsg:
@@ -475,6 +480,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			m.dialogWheel(msg.Button)
 			return nil
 		}
+		if m.sel != nil {
+			m.unselect()
+		}
 		switch msg.Button {
 		case tea.MouseWheelUp:
 			return m.wheel(-1)
@@ -488,17 +496,26 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		if m.dialog != nil {
 			return m.dialogClick(msg.X, msg.Y)
 		}
-		if msg.Button == tea.MouseLeft {
-			return m.click(msg.X, msg.Y, msg.Mod.Contains(tea.ModShift))
+		switch {
+		case m.sel != nil && !m.overlay():
+			return m.menuClick(msg)
+		case picks(msg):
+			return m.pick(msg.X, msg.Y, false)
+		case msg.Button == tea.MouseLeft:
+			return m.click(msg.X, msg.Y)
 		}
 	case tea.MouseMotionMsg:
 		m.fitHeight()
+		if act, in := m.menuAt(msg.X, msg.Y); in {
+			m.hover = ""
+			if act != "" {
+				m.hover = "menu:" + act
+			}
+			return nil
+		}
 		m.hover = m.headerAt(msg.X, msg.Y)
 		if m.hover == "" {
 			m.hover = m.barItemAt(msg.X, msg.Y)
-		}
-		if m.hover == "" {
-			m.hover = m.selBarAt(msg.X, msg.Y)
 		}
 		if i, _, ok := m.stickyAt(msg.X, msg.Y); ok && m.hover == "" {
 			m.hover = fmt.Sprintf("sticky:%d", i)
@@ -678,9 +695,11 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.dialog != nil {
 		return m.dialogKey(msg)
 	}
+	// A key closes the menu; esc does nothing else.
 	if m.sel != nil {
-		if cmd, ok := m.selKey(msg); ok {
-			return cmd
+		m.unselect()
+		if msg.String() == "esc" {
+			return nil
 		}
 	}
 	if k := msg.String(); m.look.KeyOff(k) {
@@ -700,9 +719,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "down":
 		m.scrollDown(1)
-		return nil
-	case "shift+up", "shift+down":
-		m.startSelecting()
 		return nil
 	case "pgup":
 		return m.glide(-(m.vp.Height() - 1))
@@ -744,9 +760,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case msg.Text == "e":
 			m.openLongest()
 			return nil
-		case msg.String() == "tab":
-			m.startSelecting()
-			return nil
 		case msg.Text == "k":
 			m.openVault()
 			return nil
@@ -767,7 +780,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case msg.Text == "m":
 			m.mouse = !m.mouse
 			if m.mouse {
-				m.setStatus("mouse on: click ↗ to open code, click a line to expand it")
+				m.setStatus("mouse on: click ↗ to open code, click a line to expand it, ctrl+click it for more")
 			} else {
 				m.setStatus("mouse off: select text with the mouse; m turns it back on")
 			}
@@ -954,7 +967,7 @@ func (m *Model) refresh() {
 	}
 }
 
-func (m *Model) click(x, y int, shift bool) tea.Cmd {
+func (m *Model) click(x, y int) tea.Cmd {
 	m.fitHeight()
 	m.refresh()
 	switch m.headerAt(x, y) {
@@ -964,9 +977,6 @@ func (m *Model) click(x, y int, shift bool) tea.Cmd {
 	case "fdev":
 		version.Shown = !version.Shown
 		return nil
-	}
-	if act := m.selBarAt(x, y); act != "" {
-		return m.selDo(strings.TrimPrefix(act, "sel:"))
 	}
 	if _, _, ok := m.stickyAt(x, y); ok && !m.overlay() {
 		return m.clickSticky(x, y)
@@ -979,14 +989,10 @@ func (m *Model) click(x, y int, shift bool) tea.Cmd {
 	if row := y - top - h - m.toggleRows(); row >= 0 && row < m.commandRows() {
 		return m.clickCommand(m.commandAt(x, y))
 	}
-	if m.overlay() || y < top || y >= top+h {
+	r, ok := m.rowAt(x, y)
+	if !ok {
 		return nil
 	}
-	i := m.vp.YOffset() + y - top
-	if i < 0 || i >= len(m.rows) || m.rows[i].entry == nil {
-		return nil
-	}
-	r := m.rows[i]
 	e := r.entry
 	if icon := m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
 		return m.open(e)
@@ -1003,20 +1009,29 @@ func (m *Model) click(x, y int, shift bool) tea.Cmd {
 		m.dirty = true
 		return nil
 	}
-	// A click selects the log (shift stretches the selection to it), and
-	// opens or closes it.
-	was := m.sel
-	m.selectEntry(e, shift)
-	m.resize()
-	if shift || (r.first && x >= m.width-12 && was != e && !expandable(e, m.on["details"])) {
-		return nil
-	}
+	// A click opens or closes the log; it doesn't select it (ctrl+click
+	// does, select.go).
 	if expandable(e, m.on["details"]) {
 		// While following, new lines push the output up; while scrolled back,
 		// the clicked line stays where it is.
 		return m.toggleExpanded(e)
 	}
 	return nil
+}
+
+// rowAt is the log's row at x, y on the screen.
+func (m *Model) rowAt(x, y int) (row, bool) {
+	m.fitHeight()
+	m.refresh()
+	top, h := m.logTop(), m.vp.Height()
+	if m.overlay() || y < top || y >= top+h {
+		return row{}, false
+	}
+	i := m.vp.YOffset() + y - top
+	if i < 0 || i >= len(m.rows) || m.rows[i].entry == nil {
+		return row{}, false
+	}
+	return m.rows[i], true
 }
 
 func expandable(e *Entry, details bool) bool {
@@ -1102,6 +1117,7 @@ func (m *Model) View() (string, tea.MouseMode) {
 	if m.rtl() {
 		out = visualLines(out)
 	}
+	out = m.withMenu(out)
 	mode := tea.MouseModeNone
 	if m.mouse {
 		mode = tea.MouseModeAllMotion // motion too, for the bar's hover
@@ -1225,7 +1241,7 @@ func (m *Model) fullHelp() [][]key.Binding {
 		{k.Reload, k.Restart, k.Quit},
 		{k.Scroll, k.Page, k.Ends},
 		{k.Toggles, k.Parts, k.Filter},
-		{k.Select, k.Range, k.Marks, k.Values},
+		{k.Select, k.Marks, k.Values},
 		{k.Open, k.Mouse, k.Expand, k.Window},
 		{k.Look, k.Save, k.Keep, k.Wipe, k.Full},
 	}
@@ -1240,9 +1256,6 @@ func (m *Model) footer() string {
 		return pad.Render(m.input.View())
 	case m.status != "" && time.Now().Before(m.statusUntil):
 		return pad.Render(m.statusText())
-	case m.sel != nil && !m.overlay():
-		line, _ := m.selBar()
-		return line
 	case m.help.ShowAll:
 		return pad.Render(m.help.FullHelpView(m.fullHelp()))
 	case !m.follow:

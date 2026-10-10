@@ -233,7 +233,7 @@ func (m *Model) clickBar(name string) tea.Cmd {
 	case name == "look":
 		return m.openLook()
 	case name == "save":
-		return m.openSave()
+		return m.openSave(nil)
 	case name == "expand":
 		m.toggleExpandAll()
 	case name == "values":

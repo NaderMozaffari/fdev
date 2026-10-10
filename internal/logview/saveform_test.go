@@ -12,8 +12,7 @@ func TestSaveSomeWithSubjectAndTags(t *testing.T) {
 	m := testModel(map[string]bool{})
 	m.o.Root, m.o.Target = root, "dev"
 	m.feed([]byte(sample))
-	m.selectEntry(m.entries[1], false)
-	m.selectEntry(m.entries[2], true)
+	m.saveSel = m.entries[1:3]
 	path, err := m.saveSome(saveAnswer{Subject: "ورود خراب است", Tags: "auth, bug", What: saveSelected, Format: formatText})
 	if err != nil {
 		t.Fatal(err)

@@ -635,7 +635,7 @@ func TestCommandBar(t *testing.T) {
 		t.Errorf("more is open:\n%s", s)
 	}
 	x, y := at(t, m, "more")
-	m.click(x, y, false)
+	m.click(x, y)
 	if s := ansi.Strip(m.commandBar()); !strings.Contains(s, "Widget tree") || !strings.Contains(s, "less") ||
 		!strings.Contains(s, "Stop") || !strings.Contains(s, "Flutter help") {
 		t.Errorf("more didn't open:\n%s", s)

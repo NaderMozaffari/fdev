@@ -11,62 +11,71 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Selecting logs: a click on a log, or tab, selects one; ↑/↓ move the
-// selection and shift+↑/↓ (or a shift+click) stretch it over a range.
-// While logs are selected, the bar at the bottom is what can be done with
-// them, each a button with its key:
+// Selecting logs: hold ctrl (or ⌥, or shift) and click a log, or
+// right-click it. That selects it and opens a menu by the mouse with what
+// can be done with it:
 //
-//	▌ 3 logs  c copy  j body  u URL  C cURL  f only like this  F hide like this
-//	p pin  b bookmark  h hide  t track  s save  o open  g code  esc
+//	   ╭─ 1 log ─────────────╮
+//	   │ ⧉ copy              │
+//	   │ ⧉ copy as cURL      │
+//	   │ ⚑ pin to the top    │
+//	   │ ◉ track logs like it│
+//	   ╰─────────────────────╯
 //
-// The keys go to fdev while logs are selected; esc gives them back.
+// With the menu open, the same click with shift stretches the selection to
+// another log. A click on an item does it and closes the menu; a click
+// anywhere else, esc or the wheel just closes it. The actions have no keys,
+// and a plain click on a log only opens or closes it.
 //
-// Hiding a log (h) leaves its row, empty, with a button that shows it
-// again: the logs around it stay where they were.
+// Hiding a log leaves its row, empty, with a button that shows it again:
+// the logs around it stay where they were.
 
 type selAction struct {
-	key, label, act string
+	icon, label, act string
 }
 
-// selActions are the actions for what is selected, in the bar's order.
+// selActions are the actions for what is selected, in the menu's order.
 func (m *Model) selActions() []selAction {
 	e := m.sel
 	one := m.anchor == nil || m.anchor == e
-	acts := []selAction{{"c", "copy", "copy"}}
+	acts := []selAction{{"⧉", "copy", "copy"}}
 	if one && len(bodyOf(e)) > 0 {
-		acts = append(acts, selAction{"j", "body", "body"})
+		acts = append(acts, selAction{"⧉", "copy the body", "body"})
 	}
 	if one && e.Category == "network" {
-		acts = append(acts, selAction{"u", "URL", "url"}, selAction{"C", "cURL", "curl"})
+		acts = append(acts, selAction{"⧉", "copy the URL", "url"}, selAction{"⧉", "copy as cURL", "curl"})
 	}
 	if one && e.Kind != KindTool || e.Category == "network" {
-		acts = append(acts, selAction{"f", "only like this", "only"}, selAction{"F", "hide like this", "hide"})
-	}
-	pin, mark, track := "pin", "bookmark", "track"
-	if e.pinned {
-		pin = "unpin"
-	}
-	if e.bookmarked {
-		mark = "unmark"
-	}
-	if m.trackOf(e) != nil {
-		track = "untrack"
+		acts = append(acts, selAction{"≡", "only logs like it", "only"}, selAction{"⊘", "hide logs like it", "hide"})
 	}
 	if one {
-		acts = append(acts, selAction{"p", pin, "pin"})
-	}
-	acts = append(acts, selAction{"b", mark, "bookmark"}, selAction{"h", "hide", "hide1"})
-	if one {
-		acts = append(acts, selAction{"t", track, "track"})
-	}
-	acts = append(acts, selAction{"s", "save", "save"})
-	if one {
-		acts = append(acts, selAction{"o", "open", "open"})
-		if e.At != "" {
-			acts = append(acts, selAction{"g", "code", "code"})
+		if e.pinned {
+			acts = append(acts, selAction{"⚐", "unpin", "pin"})
+		} else {
+			acts = append(acts, selAction{"⚑", "pin to the top", "pin"})
 		}
 	}
-	return append(acts, selAction{"esc", "done", "done"})
+	if e.bookmarked {
+		acts = append(acts, selAction{"☆", "remove the bookmark", "bookmark"})
+	} else {
+		acts = append(acts, selAction{"★", "bookmark", "bookmark"})
+	}
+	acts = append(acts, selAction{"◌", "hide", "hide1"})
+	if one {
+		if m.trackOf(e) != nil {
+			acts = append(acts, selAction{"◎", "stop tracking", "track"})
+		} else {
+			acts = append(acts, selAction{"◉", "track logs like it", "track"})
+		}
+	}
+	acts = append(acts, selAction{"⤓", "save…", "save"})
+	if one {
+		acts = append(acts, selAction{"▭", "open in a window", "open"})
+		if e.At != "" {
+			acts = append(acts, selAction{iconGlyph, "open the code", "code"})
+		}
+	}
+	return acts
 }
 
 // shownEntries is what the logs show now, in order.
@@ -123,37 +132,57 @@ func (m *Model) selectEntry(e *Entry, extend bool) {
 	m.dirty = true
 }
 
+// unselect closes the menu, and follows the output again if it did.
 func (m *Model) unselect() {
-	m.sel, m.anchor = nil, nil
+	if m.sel != nil && m.menuFollow {
+		m.follow, m.unseen = true, 0
+	}
+	m.sel, m.anchor, m.menuFollow = nil, nil, false
 	m.dirty = true
 	m.resize()
 }
 
-// startSelecting selects the lowest log on the screen.
-func (m *Model) startSelecting() {
-	m.refresh()
-	top := m.vp.YOffset()
-	for i := min(top+m.vp.Height(), len(m.rows)) - 1; i >= top && i >= 0; i-- {
-		if e := m.rows[i].entry; e != nil && e.Level != "cleared" {
-			m.selectEntry(e, false)
-			m.resize()
-			return
-		}
-	}
-	m.setStatus("⊘ no log on the screen to select")
+// picks is whether a click selects: one with ctrl, ⌥ or shift held, or a
+// right click. Terminals keep some of these for themselves (⌥ and shift
+// often select text), so any of them will do.
+func picks(msg tea.MouseClickMsg) bool {
+	return msg.Button == tea.MouseRight ||
+		msg.Button == tea.MouseLeft && msg.Mod&(tea.ModCtrl|tea.ModAlt|tea.ModShift|tea.ModMeta) != 0
 }
 
-// moveSel moves the selection by d logs; extend stretches it.
-func (m *Model) moveSel(d int, extend bool) {
-	shown := m.shownEntries()
-	i := indexOf(shown, m.sel)
-	if i < 0 {
-		m.unselect()
-		return
+// pick selects the log at x, y (extend stretches the selection to it) and
+// opens the menu there. The logs stop following while it is open, so the
+// log stays by the menu.
+func (m *Model) pick(x, y int, extend bool) tea.Cmd {
+	r, ok := m.rowAt(x, y)
+	if !ok || r.entry.Level == "cleared" || r.entry.hidden {
+		if m.sel != nil {
+			m.unselect()
+		}
+		return nil
 	}
-	i = min(max(i+d, 0), len(shown)-1)
-	m.selectEntry(shown[i], extend)
-	m.reveal(shown[i])
+	if m.sel == nil && m.follow {
+		m.follow, m.menuFollow = false, true
+	}
+	m.selectEntry(r.entry, extend)
+	m.menuX, m.menuY = x, y
+	m.resize()
+	return nil
+}
+
+// menuClick is a click while the menu is open.
+func (m *Model) menuClick(msg tea.MouseClickMsg) tea.Cmd {
+	if act, in := m.menuAt(msg.X, msg.Y); in {
+		if act != "" && msg.Button == tea.MouseLeft {
+			return m.selDo(act)
+		}
+		return nil
+	}
+	if picks(msg) {
+		return m.pick(msg.X, msg.Y, msg.Mod.Contains(tea.ModShift))
+	}
+	m.unselect()
+	return nil
 }
 
 // reveal scrolls so e is on the screen, its first row a little down from
@@ -187,60 +216,23 @@ func (m *Model) reveal(e *Entry) {
 	}
 }
 
-// jumpTo selects e and shows it, marked for a moment.
+// jumpTo shows e, marked for a moment.
 func (m *Model) jumpTo(e *Entry) tea.Cmd {
 	if !m.visible(e) {
 		m.setStatus("⊘ that log is hidden now: a filter or a toggle hides it")
 		return nil
 	}
-	m.selectEntry(e, false)
-	m.resize()
+	m.jumped = e
 	m.reveal(e)
 	m.lit, m.litAt = e, time.Now()
 	m.dirty = true
 	return m.startMotion()
 }
 
-// selKey handles a key while logs are selected; ok is false for keys that
-// aren't the selection's (they work as usual).
-func (m *Model) selKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
-	switch msg.String() {
-	case "up":
-		m.moveSel(-1, false)
-	case "down":
-		m.moveSel(1, false)
-	case "shift+up":
-		m.moveSel(-1, true)
-	case "shift+down":
-		m.moveSel(1, true)
-	case "home":
-		m.moveSel(-len(m.entries), msg.Mod.Contains(tea.ModShift))
-	case "end":
-		m.moveSel(len(m.entries), msg.Mod.Contains(tea.ModShift))
-	case "esc":
-		m.unselect()
-	case "enter", "space":
-		if expandable(m.sel, m.on["details"]) || len(m.sel.Lines) > 0 {
-			return m.toggleExpanded(m.sel), true
-		}
-	case "tab":
-		m.moveSel(1, false)
-	case "shift+tab":
-		m.moveSel(-1, false)
-	default:
-		for _, a := range m.selActions() {
-			if a.key == msg.Text && a.key != "esc" {
-				return m.selDo(a.act), true
-			}
-		}
-		return nil, false
-	}
-	return nil, true
-}
-
-// selDo does a selection action.
+// selDo does a menu item, for what is selected, and closes the menu.
 func (m *Model) selDo(act string) tea.Cmd {
 	e, all := m.sel, m.selected()
+	m.unselect()
 	switch act {
 	case "copy":
 		var b strings.Builder
@@ -281,26 +273,23 @@ func (m *Model) selDo(act string) tea.Cmd {
 			x.hidden, x.cached = true, cacheKey{}
 		}
 		m.setStatus(fmt.Sprintf("◌ hid %s · a click on its row shows it again", plural(len(all), "log")))
-		m.unselect()
 	case "save":
-		return m.openSave()
+		return m.openSave(all)
 	case "open":
 		m.openDialog(e)
 	case "code":
 		return m.open(e)
-	case "done":
-		m.unselect()
 	}
 	return nil
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────
 
-// nextBookmark selects the next bookmarked log down (dir 1) or up (-1)
-// from the selection, or from the screen.
+// nextBookmark shows the next bookmarked log down (dir 1) or up (-1) from
+// the one it showed last, or from an end.
 func (m *Model) nextBookmark(dir int) tea.Cmd {
 	shown := m.shownEntries()
-	from := indexOf(shown, m.sel)
+	from := indexOf(shown, m.jumped)
 	if from < 0 {
 		from = len(shown)
 		if dir > 0 {
@@ -319,7 +308,7 @@ func (m *Model) nextBookmark(dir int) tea.Cmd {
 		}
 	}
 	if n == 0 {
-		m.setStatus("⊘ no bookmarks yet · select a log and press b")
+		m.setStatus("⊘ no bookmarks yet · ctrl+click a log to bookmark it")
 	} else {
 		m.setStatus("⊘ no more bookmarks that way")
 	}
@@ -419,47 +408,75 @@ func paintBg(text string, width int, bg color.Color) string {
 	return seq + t + strings.Repeat(" ", max(width-lipgloss.Width(text), 0)) + "\x1b[m"
 }
 
-// selBar is the bar of actions for the selection, in place of the help.
-func (m *Model) selBar() (string, []barItem) {
-	th := m.th
-	n := len(m.selected())
-	head := lipgloss.NewStyle().Foreground(th.Fuchsia).Render("▌") +
-		lipgloss.NewStyle().Bold(true).Foreground(th.Pink).Render(plural(n, "log")+" selected")
-	if n == 1 {
-		head += lipgloss.NewStyle().Foreground(th.Muted).Render(" · shift+↑/↓ more")
+// menuRect is where the menu is on the screen: under the clicked row, or
+// above it when there is no room below, kept on the screen.
+func (m *Model) menuRect(box []string) (x, y, w, h int) {
+	w, h = lipgloss.Width(box[0]), len(box)
+	x, y = m.menuX, m.menuY+1
+	if y+h > m.height {
+		y = m.menuY - h
 	}
-	x := 1 + lipgloss.Width(head) + 2
-	line := head + "  "
-	var items []barItem
-	keyStyle := lipgloss.NewStyle().Foreground(th.Pink).Bold(true)
-	for _, a := range m.selActions() {
-		text := keyStyle.Render(a.key) + " " + a.label
-		style := lipgloss.NewStyle().Padding(0, 1).Background(th.BarBg).Foreground(th.Normal)
-		if m.hover == "sel:"+a.act {
-			style = style.Underline(true).Foreground(th.Pink)
-		}
-		chip := style.Render(text)
-		w := lipgloss.Width(chip)
-		if x+w > m.width {
-			break
-		}
-		items = append(items, barItem{name: "sel:" + a.act, text: chip, x: x, width: w})
-		line += chip + " "
-		x += w + 1
-	}
-	return ansi.Truncate(" "+line, m.width, "…"), items
+	return max(min(x, m.width-w), 0), max(min(y, m.height-h), 0), w, h
 }
 
-// selBarAt is the action under the mouse in the selection bar.
-func (m *Model) selBarAt(x, y int) string {
-	if m.sel == nil || y != m.height-1 {
-		return ""
+// menuBox is the menu's rows.
+func (m *Model) menuBox() []string {
+	th := m.th
+	acts := m.selActions()
+	title := " " + plural(len(m.selected()), "log") + " "
+	inner := lipgloss.Width(title) + 2
+	for _, a := range acts {
+		inner = max(inner, lipgloss.Width(a.icon)+lipgloss.Width(a.label)+3)
 	}
-	_, items := m.selBar()
-	for _, it := range items {
-		if x >= it.x && x < it.x+it.width {
-			return it.name
+	border := lipgloss.NewStyle().Foreground(th.Fuchsia).Background(th.BarBg)
+	head := lipgloss.NewStyle().Bold(true).Foreground(th.Pink).Background(th.BarBg)
+	out := []string{border.Render("╭─") + head.Render(title) + border.Render(strings.Repeat("─", inner-1-lipgloss.Width(title))+"╮")}
+	for _, a := range acts {
+		item := lipgloss.NewStyle().Width(inner).Background(th.BarBg).Foreground(th.Normal)
+		icon := lipgloss.NewStyle().Background(th.BarBg).Foreground(th.Pink)
+		if m.hover == "menu:"+a.act {
+			item = item.Background(th.Fuchsia).Foreground(th.Cream).Bold(true)
+			icon = icon.Background(th.Fuchsia).Foreground(th.Cream)
 		}
+		text := icon.Render(" "+a.icon+" ") + item.UnsetWidth().Render(a.label)
+		text += item.UnsetWidth().Render(strings.Repeat(" ", max(inner-lipgloss.Width(text), 0)))
+		out = append(out, border.Render("│")+text+border.Render("│"))
 	}
-	return ""
+	return append(out, border.Render("╰"+strings.Repeat("─", inner)+"╯"))
+}
+
+// menuAt is the menu's item under the mouse, and whether the mouse is on
+// the menu at all.
+func (m *Model) menuAt(x, y int) (string, bool) {
+	if m.sel == nil || m.overlay() {
+		return "", false
+	}
+	x0, y0, w, h := m.menuRect(m.menuBox())
+	if x < x0 || x >= x0+w || y < y0 || y >= y0+h {
+		return "", false
+	}
+	if i := y - y0 - 1; x > x0 && x < x0+w-1 && i >= 0 && i < h-2 {
+		return m.selActions()[i].act, true
+	}
+	return "", true
+}
+
+// withMenu draws the menu over the screen, while logs are selected.
+func (m *Model) withMenu(screen string) string {
+	if m.sel == nil || m.overlay() {
+		return screen
+	}
+	box := m.menuBox()
+	x, y, w, _ := m.menuRect(box)
+	lines := strings.Split(screen, "\n")
+	for i, b := range box {
+		if y+i >= len(lines) {
+			break
+		}
+		l := lines[y+i]
+		left := ansi.Truncate(l, x, "")
+		left += strings.Repeat(" ", max(x-lipgloss.Width(left), 0))
+		lines[y+i] = left + "\x1b[m" + b + "\x1b[m" + ansi.TruncateLeft(l, x+w, "")
+	}
+	return strings.Join(lines, "\n")
 }

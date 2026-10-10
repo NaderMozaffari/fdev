@@ -10,6 +10,7 @@
 //	key down 3        press a key (enter, esc, tab, up, ctrl+s, a, ...), 3 times
 //	type tag:Auth     type text, a key at a time
 //	click 12 30       click the cell at column 12, row 30 (from 1)
+//	click 12 30 ctrl  the same, holding ctrl (or shift, alt; several will do)
 //	mark name         a marker, to take a screenshot at (agg --select marker:name)
 //	# a comment
 //
@@ -207,9 +208,22 @@ func main() {
 			if _, err := fmt.Sscan(arg, &x, &y); err != nil {
 				fail(line, err)
 			}
+			b := 0 // the left button, with the modifiers' bits (xterm's SGR mouse)
+			for _, mod := range strings.Fields(arg)[2:] {
+				switch mod {
+				case "shift":
+					b |= 4
+				case "alt":
+					b |= 8
+				case "ctrl":
+					b |= 16
+				default:
+					fail(line, fmt.Errorf("unknown modifier %q", mod))
+				}
+			}
 			tty.WriteString(fmt.Sprintf("\x1b[<35;%d;%dM", x, y)) // the pointer moves there first
 			wait(120*time.Millisecond, done)
-			tty.WriteString(fmt.Sprintf("\x1b[<0;%d;%dM\x1b[<0;%d;%dm", x, y, x, y))
+			tty.WriteString(fmt.Sprintf("\x1b[<%d;%d;%dM\x1b[<%d;%d;%dm", b, x, y, b, x, y))
 			wait(150*time.Millisecond, done)
 		case "move":
 			var x, y int
