@@ -101,3 +101,42 @@ func TestExpandButtonAndAll(t *testing.T) {
 		t.Errorf("a new call didn't come open:\n%s", s)
 	}
 }
+
+func TestPairsJoined(t *testing.T) {
+	m := testModel(map[string]bool{})
+	m.feed([]byte(`I/flutter (1): ⟪fd⟫{"l":"http","p":"request","id":"1","method":"GET","url":"https://a.test/v1/products"}` + "\n" +
+		`I/flutter (1): ⟪fd⟫{"l":"info","m":"hello"}` + "\n" +
+		`I/flutter (1): ⟪fd⟫{"l":"http","p":"request","id":"2","method":"POST","url":"https://a.test/v1/cart"}` + "\n" +
+		`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","id":"1","method":"GET","url":"https://a.test/v1/products","status":200}` + "\n" +
+		`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","id":"2","method":"POST","url":"https://a.test/v1/cart","status":201}` + "\n"))
+	lines := strings.Split(screen(m), "\n")
+	for i, want := range []string{"╭── ", "│   ", "│╭─ ", "╰┼─ ", " ╰─ "} {
+		if !strings.HasPrefix(lines[1+i], want) {
+			t.Errorf("row %d is %q, want it to start with %q", i, lines[1+i], want)
+		}
+	}
+	// A request and its response share a color, which the next call doesn't.
+	get, post := m.entries[0], m.entries[2]
+	if get.call != get.Response.call || m.callColor(get) == m.callColor(post) {
+		t.Errorf("calls %d/%d and %d", get.call, get.Response.call, post.call)
+	}
+	content, _ := m.View()
+	tinted := strings.Split(content, "\n")[1]
+	if !strings.Contains(tinted, "48;") {
+		t.Errorf("the request has no tint: %q", tinted)
+	}
+	// The mouse over the response makes its request stand out more.
+	m.Update(tea.MouseMotionMsg{X: 30, Y: rowOf(t, m, get.Response)})
+	content, _ = m.View()
+	if lit := strings.Split(content, "\n")[1]; lit == tinted {
+		t.Error("the pair under the mouse doesn't stand out")
+	}
+	// Without its response shown, a request has no line.
+	for _, r := range []*Entry{get.Response, post.Response} {
+		r.hidden, r.cached = true, cacheKey{}
+	}
+	m.dirty = true
+	if s := screen(m); strings.Contains(s, "╭") {
+		t.Errorf("a line without its other end:\n%s", s)
+	}
+}

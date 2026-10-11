@@ -82,6 +82,7 @@ type Entry struct {
 	// A request and its response find each other (by the record's id, or
 	// method and URL): a request without one is still waiting.
 	Request, Response *Entry
+	call              int     // the call's number, on its request and its response (pairs.go)
 	Values            []Value // values to keep at hand, found in this log (values.go)
 	abandoned         bool    // a request whose response won't come: a restart, the end of the run
 	bookmarked        bool    // marked to find again: [ and ] jump between them
@@ -175,6 +176,7 @@ type Parser struct {
 	host        string
 	last        *Entry
 	pending     map[string][]*Entry // requests waiting for a response, by call
+	calls       int                 // requests so far, to number them
 	// ValueKeys are more keys (besides tokens) whose values in network
 	// headers and bodies are kept at hand: userId, deviceId, ...
 	ValueKeys []string
@@ -513,6 +515,8 @@ func (p *Parser) http(r record, now time.Time) *Entry {
 	switch r.Phase {
 	case "request":
 		e.Level = "request"
+		p.calls++
+		e.call = p.calls
 		e.Lines = query // always shown, under the line
 		if p.pending == nil {
 			p.pending = map[string][]*Entry{}
@@ -553,6 +557,7 @@ func (p *Parser) http(r record, now time.Time) *Entry {
 				delete(p.pending, call)
 			}
 			req.Response, e.Request = e, req
+			e.call = req.call
 			req.cached = cacheKey{} // it shows the response's status now
 		}
 	}

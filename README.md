@@ -368,6 +368,9 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
   that expands to headers and body. A URL's query parameters follow its
   path on the request and the response, decoded and colored
   (`/v1/products?page=2&q=red shoes`); opened, the call lists them one a line.
+- A request and **its response are joined**: a line on the left runs from
+  one to the other in the call's color, and both rows are tinted with it,
+  more while the mouse is over either, so calls that overlap don't mix.
 - A request still waiting for its response **spins**, with the time so far;
   once the response comes, the request says what it got (`→ 200 142ms`),
   and the header counts the calls in flight.

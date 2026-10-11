@@ -95,12 +95,12 @@ func gapText(d time.Duration) string {
 }
 
 // groupRule is the line between two groups, its label near the left.
-func (m *Model) groupRule(label string) string {
+func (m *Model) groupRule(label string, width int) string {
 	rule := lipgloss.NewStyle().Foreground(m.th.Subtle)
 	text := lipgloss.NewStyle().Foreground(m.th.Muted).Render(" " + label + " ")
 	if label == "" {
 		text = ""
 	}
-	rest := max(m.width-2-lipgloss.Width(text), 0)
-	return ansi.Truncate(rule.Render("╌╌")+text+rule.Render(strings.Repeat("╌", rest)), m.width, "")
+	rest := max(width-2-lipgloss.Width(text), 0)
+	return ansi.Truncate(rule.Render("╌╌")+text+rule.Render(strings.Repeat("╌", rest)), width, "")
 }

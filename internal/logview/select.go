@@ -388,7 +388,7 @@ func compact(n *node) string {
 // ── Drawing ──────────────────────────────────────────────────────────────────
 
 // selRows paints the rows of a selected log.
-func (m *Model) selRows(rows []row, cursor bool) []row {
+func (m *Model) selRows(rows []row, cursor bool, width int) []row {
 	bg := m.th.BarBg
 	out := make([]row, len(rows))
 	for i, r := range rows {
@@ -396,7 +396,7 @@ func (m *Model) selRows(rows []row, cursor bool) []row {
 		if cursor {
 			mark = lipgloss.NewStyle().Foreground(m.th.Fuchsia).Render("▌")
 		}
-		r.text = paintBg(mark+ansi.TruncateLeft(r.text, 1, ""), m.width, bg)
+		r.text = paintBg(mark+ansi.TruncateLeft(r.text, 1, ""), width, bg)
 		out[i] = r
 	}
 	return out

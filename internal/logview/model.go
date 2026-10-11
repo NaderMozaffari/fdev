@@ -189,6 +189,8 @@ type Model struct {
 	width, height int
 	vp            viewport.Model
 	rows          []row // what the viewport shows, for clicks
+	lanes         int   // the gutter's columns for request–response lines (pairs.go)
+	gutterW       int   // the gutter's width; the logs start after it
 	dirty         bool
 	follow        bool
 	unseen        int
@@ -919,6 +921,7 @@ func (m *Model) refresh() {
 		spacer = strings.TrimRight(m.cols().blank(), " ")
 	}
 	groups := m.grouping()
+	lane, width := m.planLanes()
 	var chosen map[*Entry]bool
 	if sel := m.selected(); len(sel) > 0 {
 		chosen = map[*Entry]bool{}
@@ -932,18 +935,20 @@ func (m *Model) refresh() {
 		}
 		if groups != nil {
 			if label, ok := groups.next(e); ok {
-				rows = append(rows, row{text: m.groupRule(label)})
+				rows = append(rows, row{text: m.groupRule(label, width)})
 			}
 		}
-		er := m.entryRows(e, m.width)
+		er := m.entryRows(e, width)
 		if m.unfolding != nil && m.unfolding.entry == e {
-			er = m.unfoldRows(e, m.width)
+			er = m.unfoldRows(e, width)
 		}
 		if m.lit == e {
 			er = m.litRows(er)
 		}
 		if chosen[e] {
-			er = m.selRows(er, e == m.sel)
+			er = m.selRows(er, e == m.sel, width)
+		} else if m.partner(e) != nil {
+			er = m.tintRows(er, e, width)
 		}
 		rows = append(rows, er...)
 		if e.Kind != KindTool && !m.on["raw"] {
@@ -956,8 +961,9 @@ func (m *Model) refresh() {
 	case m.task != nil && !m.exited:
 		rows = append(rows, row{text: m.taskRow()})
 	case m.partial != "" && !CouldBeLog(m.partial):
-		rows = append(rows, row{text: ansi.Truncate(cleanTool(m.partial), m.width, "…")})
+		rows = append(rows, row{text: ansi.Truncate(cleanTool(m.partial), width, "…")})
 	}
+	rows = m.withGutter(rows, lane)
 	m.rows = rows
 	lines := make([]string, len(rows))
 	for i, r := range rows {
@@ -999,7 +1005,7 @@ func (m *Model) click(x, y int) tea.Cmd {
 		return nil
 	}
 	e := r.entry
-	if icon := m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
+	if icon := m.gutterW + m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
 		return m.open(e)
 	}
 	if m.onExpander(e, x, y) {
@@ -1102,7 +1108,9 @@ func (m *Model) View() (string, tea.MouseMode) {
 	case m.dialog != nil:
 		parts = append(parts, m.dialogView(m.logHeight()+m.headerRows()))
 	case m.headerRows() > 0:
-		parts = append(parts, m.tableHeader(m.cols())...)
+		for _, l := range m.tableHeader(m.cols()) {
+			parts = append(parts, ansi.Truncate(strings.Repeat(" ", m.gutterW)+l, m.width, ""))
+		}
 		parts = append(parts, m.vp.View())
 	default:
 		parts = append(parts, m.vp.View())

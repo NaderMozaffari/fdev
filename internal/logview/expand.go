@@ -55,9 +55,13 @@ func (m *Model) onExpander(e *Entry, x, y int) bool {
 
 // hoverLog notes the log under the mouse, whose button shows.
 func (m *Model) hoverLog(x, y int) {
+	was := m.hoverEntry
 	m.hoverEntry = nil
 	if r, ok := m.rowAt(x, y); ok && r.entry.Level != "cleared" {
 		m.hoverEntry = r.entry
+	}
+	if m.hoverEntry != was {
+		m.dirty = true // the pair under the mouse stands out (pairs.go)
 	}
 }
 
