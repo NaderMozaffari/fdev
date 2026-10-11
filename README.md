@@ -365,8 +365,9 @@ change a tab's icon or color, so the circle stands in for both.
 with its time, level and tag, and `↗` opens the line of code that logged it.
 
 - **Network calls** are one line (`RESP GET /v1/me status=200 took=142ms`)
-  that expands to headers and body. A URL's query parameters are shown
-  apart, one a line (`? type = UPDATE_INFORMATION`), not glued to the path.
+  that expands to headers and body. A URL's query parameters follow its
+  path on the request and the response, decoded and colored
+  (`/v1/products?page=2&q=red shoes`); opened, the call lists them one a line.
 - A request still waiting for its response **spins**, with the time so far;
   once the response comes, the request says what it got (`→ 200 142ms`),
   and the header counts the calls in flight.

@@ -7,17 +7,23 @@ import (
 	"time"
 )
 
-func TestQueryParametersApart(t *testing.T) {
+func TestQueryParametersAfterThePath(t *testing.T) {
 	m := testModel(map[string]bool{})
-	m.feed([]byte(`I/flutter (1): ⟪fd⟫{"l":"http","p":"request","method":"GET","url":"https://a.test/api/v1/app-texts?type=UPDATE_INFORMATION&q=hello%20world"}` + "\n"))
+	url := "https://a.test/api/v1/app-texts?type=UPDATE_INFORMATION&q=hello%20world"
+	m.feed([]byte(`I/flutter (1): ⟪fd⟫{"l":"http","p":"request","method":"GET","url":"` + url + `","headers":{"A":"b"}}` + "\n" +
+		`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","method":"GET","url":"` + url + `","status":200}` + "\n"))
 	s := screen(m)
-	if strings.Contains(s, "?type=UPDATE") || !strings.Contains(s, "/api/v1/app-texts") {
-		t.Errorf("the query is still in the path:\n%s", s)
+	if n := strings.Count(s, "/api/v1/app-texts?type=UPDATE_INFORMATION&q=hello world"); n != 2 {
+		t.Errorf("the query is after %d of the 2 paths:\n%s", n, s)
 	}
-	for _, want := range []string{"? type = UPDATE_INFORMATION", "& q = hello world"} {
-		if !strings.Contains(s, want) {
-			t.Errorf("no %q:\n%s", want, s)
-		}
+	if strings.Contains(s, "? type = UPDATE_INFORMATION") {
+		t.Errorf("the query is under the request too, folded:\n%s", s)
+	}
+	// Opened, the details list it one a line.
+	m.toggleExpanded(m.entries[0])
+	m.unfolding = nil // done unfolding
+	if s := screen(m); !strings.Contains(s, "? type = UPDATE_INFORMATION") || !strings.Contains(s, "& q = hello world") {
+		t.Errorf("no query in the request's details:\n%s", s)
 	}
 }
 

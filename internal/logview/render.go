@@ -314,11 +314,6 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 			text += " " + muted.Render(f.Key+"=") + p.tone(f.Tone).Render(f.Value)
 		}
 	}
-	if e.Category == "network" && e.Level != "request" {
-		if keys := queryKeys(e.Details); keys != "" && !e.Expanded && !m.on["details"] {
-			text += " " + muted.Render(ansi.Truncate("?"+keys, 28, "…"))
-		}
-	}
 	var marked []string
 	if e.bookmarked {
 		marked = append(marked, p.fg(m.th.Warn).Render("★"))
@@ -344,6 +339,9 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	}
 	var rest []string
 	for _, l := range e.Lines {
+		if e.Category == "network" && l.Kind == LineQuery {
+			continue // on the line, after the path; one a line with the details
+		}
 		rest = append(rest, wrap(p.line(l), indent, indent, width)...)
 	}
 	stack := e.Stack
@@ -356,7 +354,11 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	}
 	if m.on["details"] || e.Expanded {
 		bar := p.fg(m.th.PinkDim).Render("┃ ")
-		for _, l := range e.Details {
+		details := e.Details
+		if e.Level == "request" { // a request's query is in its lines
+			details = append(queryOf(e.Lines), details...)
+		}
+		for _, l := range details {
 			rest = append(rest, wrap(p.line(l), indent+bar, indent+bar, width)...)
 		}
 	}
@@ -429,28 +431,25 @@ func (m *Model) networkColumns(e *Entry, c cols, avail int) string {
 	return line
 }
 
-// networkTitle is the arrow, the call's name and its path: the name in the
-// arrow's color, the path dimmed after it. Without a name, the path alone.
+// networkTitle is the arrow, the call's name and its path with its query:
+// the name in the arrow's color, the path dimmed after it, then the query,
+// decoded (/v1/products?page=2&q=red shoes). Without a name, the path alone.
 func (m *Model) networkTitle(e *Entry) string {
 	col := phaseColor(m.th, e.Level)
 	arrow := lipgloss.NewStyle().Foreground(col).Bold(true).Render(phaseArrow(e.Level))
+	muted := lipgloss.NewStyle().Foreground(m.th.Muted)
+	path := muted.Render(e.path())
 	if e.Name == "" {
-		return arrow + " " + e.path()
+		path = e.path()
 	}
-	return arrow + " " + lipgloss.NewStyle().Foreground(col).Bold(true).Render(e.Name) + "  " +
-		lipgloss.NewStyle().Foreground(m.th.Muted).Render(e.path())
-}
-
-// queryKeys is the names of a URL's query parameters, "type&page".
-func queryKeys(lines []Line) string {
-	var keys []string
-	for _, l := range lines {
-		if l.Kind == LineQuery {
-			k, _, _ := strings.Cut(l.Text[1:], "=")
-			keys = append(keys, k)
-		}
+	for _, l := range append(queryOf(e.Lines), queryOf(e.Details)...) {
+		k, v, _ := strings.Cut(l.Text[1:], "=")
+		path += muted.Render(l.Text[:1]) + lipgloss.NewStyle().Foreground(m.th.Indigo).Render(k) + muted.Render("=") + v
 	}
-	return strings.Join(keys, "&")
+	if e.Name == "" {
+		return arrow + " " + path
+	}
+	return arrow + " " + lipgloss.NewStyle().Foreground(col).Bold(true).Render(e.Name) + "  " + path
 }
 
 func marks(e *Entry) int {
