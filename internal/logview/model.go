@@ -147,7 +147,8 @@ type Model struct {
 	ui       config.UI // the theme (drawn with th) and size shown
 	full     bool      // full screen: the header and the logs, no bars or help
 
-	hover string // the bar item under the mouse
+	hover      string // the bar item under the mouse
+	hoverEntry *Entry // the log under the mouse, which shows its ▸ more (expand.go)
 
 	// Motion (motion.go): smooth scrolling, details unfolding.
 	scrollLeft int // lines still to scroll; negative is up
@@ -513,7 +514,11 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			}
 			return nil
 		}
+		m.hoverLog(msg.X, msg.Y)
 		m.hover = m.headerAt(msg.X, msg.Y)
+		if m.hover == "" && m.hoverEntry != nil && m.onExpander(m.hoverEntry, msg.X, msg.Y) {
+			m.hover = "expand"
+		}
 		if m.hover == "" {
 			m.hover = m.barItemAt(msg.X, msg.Y)
 		}
@@ -780,7 +785,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case msg.Text == "m":
 			m.mouse = !m.mouse
 			if m.mouse {
-				m.setStatus("mouse on: click ↗ to open code, click a line to expand it, " + pickClick + " it for more")
+				m.setStatus("mouse on: click ↗ to open code, ▸ more on a log to open it, " + pickClick + " it for more")
 			} else {
 				m.setStatus("mouse off: select text with the mouse; m turns it back on")
 			}
@@ -997,6 +1002,9 @@ func (m *Model) click(x, y int) tea.Cmd {
 	if icon := m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
 		return m.open(e)
 	}
+	if m.onExpander(e, x, y) {
+		return m.toggleExpanded(e)
+	}
 	if r.more {
 		m.openDialog(e)
 		return nil
@@ -1009,13 +1017,8 @@ func (m *Model) click(x, y int) tea.Cmd {
 		m.dirty = true
 		return nil
 	}
-	// A click opens or closes the log; it doesn't select it (⌥+click
-	// does, select.go).
-	if expandable(e, m.on["details"]) {
-		// While following, new lines push the output up; while scrolled back,
-		// the clicked line stays where it is.
-		return m.toggleExpanded(e)
-	}
+	// Elsewhere on a log a click does nothing: ▸ more opens it, and ⌥+click
+	// selects it (select.go).
 	return nil
 }
 
@@ -1117,7 +1120,7 @@ func (m *Model) View() (string, tea.MouseMode) {
 	if m.rtl() {
 		out = visualLines(out)
 	}
-	out = m.withMenu(out)
+	out = m.withMenu(m.withExpander(out))
 	mode := tea.MouseModeNone
 	if m.mouse {
 		mode = tea.MouseModeAllMotion // motion too, for the bar's hover

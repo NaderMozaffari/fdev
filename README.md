@@ -401,7 +401,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `ctrl+l`, **⌫ clear** | clear the screen, not the log: what came before is saved (saving starts if it was off) and the session's file goes on after a `──── cleared ────` line; flutter's `c` does the same |
 | `↑` `↓` `pgup` `pgdn` `home` `end`, mouse wheel | scroll, smoothly (the wheel speeds up as it keeps turning); `end` follows new output again |
 | click `↗` | open the code that logged the line |
-| click a line with `▸` | expand its headers and body, or the whole stack trace: they unfold, marked for a moment |
+| **▸ more** on a log | the mouse over a log with more to show (headers and body, a long stack trace) brings up **▸ more** at the right of its row; a click on it unfolds them, marked for a moment, and **▾ less** folds them again. A click elsewhere on a log leaves it as it is |
 | `x`, **⊞ open all** | open every network call (and the ones that come after); again to fold them |
 | `e`, click **… more lines · ⤢ open** | a long log (a big response body, a long print) shows its first rows; this opens all of it in a window: `↑` `↓` `pgup` `pgdn` `home` `end` scroll, `c` copies the body, `esc` closes |
 | ⌥+click a log on macOS, ctrl+click elsewhere (shift+click and right-click work too, where the terminal passes them on) | select it and open a menu by the mouse: copy, copy the body, the URL or the call as cURL, only logs like it, hide logs like it, pin it to the top, bookmark, hide, track it, save, open in a window, open its code. With the menu open, shift with the click selects a range. A click elsewhere, `esc` or the wheel closes it. These have no keys, and a plain click only opens or closes a log |

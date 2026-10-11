@@ -283,7 +283,7 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 		if c.tagW > 0 {
 			prefix += lipgloss.NewStyle().Bold(true).Render(fit(e.method(), c.tagW)) + c.sep
 		}
-		text = m.networkColumns(e, c, width-lipgloss.Width(prefix)-7) // 7: the ▸ more
+		text = m.networkColumns(e, c, width-lipgloss.Width(prefix)-expanderW-2) // room for the ▸ more (expand.go)
 	case e.Category == "network":
 		text = lipgloss.NewStyle().Bold(true).Render(e.method()) + " " + m.networkTitle(e)
 		for _, f := range e.Fields {
@@ -332,22 +332,6 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	if len(marked) > 0 {
 		text = strings.Join(marked, "") + " " + text
 	}
-	switch {
-	case e.Category == "network" && len(e.Details) > 0 && !m.on["details"]:
-		// The button that opens the call: its headers and body.
-		if e.Expanded {
-			text += " " + p.fg(m.th.Pink).Render("▾ less")
-		} else {
-			text += " " + p.fg(m.th.Pink).Render(expandGlyph+" more")
-		}
-	case (len(e.Details) > 0 && !m.on["details"]) || len(e.Stack) > maxStack:
-		glyph := expandGlyph
-		if e.Expanded {
-			glyph = "▾"
-		}
-		text += " " + muted.Render(glyph)
-	}
-
 	// Folded, a long entry shows its first rows and how many more there
 	// are; a click on that row opens it all in a window (dialog.go).
 	folded := !e.Expanded
@@ -387,10 +371,9 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	switch {
 	case folded && hidden > 0:
 		out = append(out, hintMark+indent+muted.Render(fmt.Sprintf("… %d more lines · ", hidden))+
-			p.fg(m.th.Pink).Render("⤢ open")+muted.Render(" (e) · click the log to unfold"))
+			p.fg(m.th.Pink).Render("⤢ open")+muted.Render(" (e)"))
 	case !folded && e.clipped:
-		out = append(out, hintMark+indent+p.fg(m.th.Pink).Render("⤢ open in a window")+
-			muted.Render(" (e) · click the log to fold"))
+		out = append(out, hintMark+indent+p.fg(m.th.Pink).Render("⤢ open in a window")+muted.Render(" (e)"))
 	}
 	return out
 }

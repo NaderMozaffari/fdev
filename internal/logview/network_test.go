@@ -1,6 +1,7 @@
 package logview
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"strings"
 	"testing"
 	"time"
@@ -54,11 +55,39 @@ func TestRequestsWaitForTheirResponse(t *testing.T) {
 func TestExpandButtonAndAll(t *testing.T) {
 	m := testModel(map[string]bool{})
 	m.feed([]byte(sample))
-	if s := screen(m); !strings.Contains(s, "▸ more") || !strings.Contains(s, "⊞ open all") {
-		t.Fatalf("no expand buttons:\n%s", s)
+	if s := screen(m); strings.Contains(s, "▸ more") || !strings.Contains(s, "⊞ open all") {
+		t.Fatalf("a ▸ more without the mouse over a log, or no ⊞ open all:\n%s", s)
+	}
+	// The mouse over a log brings its button; only the button opens it.
+	var resp *Entry
+	for _, e := range m.entries {
+		if e.Level == "response" {
+			resp = e
+		}
+	}
+	y := rowOf(t, m, resp)
+	m.Update(tea.MouseMotionMsg{X: 20, Y: y})
+	if s := screen(m); !strings.Contains(strings.Split(s, "\n")[y], "▸ more") {
+		t.Fatalf("no ▸ more on the log under the mouse:\n%s", s)
+	}
+	m.Update(tea.MouseClickMsg{X: 20, Y: y, Button: tea.MouseLeft})
+	if resp.Expanded {
+		t.Fatal("a click on the log, not its button, opened it")
+	}
+	m.Update(tea.MouseMotionMsg{X: m.width - 4, Y: y})
+	if m.hover != "expand" {
+		t.Errorf("hover = %q", m.hover)
+	}
+	m.Update(tea.MouseClickMsg{X: m.width - 4, Y: y, Button: tea.MouseLeft})
+	if s := screen(m); !resp.Expanded || !strings.Contains(s, "▾ less") {
+		t.Fatalf("▸ more did not open the log:\n%s", s)
+	}
+	m.Update(tea.MouseClickMsg{X: m.width - 4, Y: rowOf(t, m, resp), Button: tea.MouseLeft})
+	if resp.Expanded {
+		t.Fatal("▾ less did not close the log")
 	}
 	m.Update(keyText("x"))
-	if s := screen(m); !strings.Contains(s, `"a": 1`) || !strings.Contains(s, "▾ less") {
+	if s := screen(m); !strings.Contains(s, `"a": 1`) {
 		t.Errorf("x did not open the calls:\n%s", s)
 	}
 	m.feed([]byte(`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","method":"GET","url":"https://a.test/v2","status":200,"body":{"later":1}}` + "\n"))
