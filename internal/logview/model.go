@@ -123,7 +123,7 @@ func newKeyMap() keyMap {
 		Full:    b([]string{"z"}, "z", "full screen"),
 		Window:  b([]string{"e"}, "e", "open a long log in a window"),
 		Save:    b([]string{"ctrl+s"}, "ctrl+s", "save log"),
-		Select:  b([]string{"ctrl+click"}, "ctrl+click", "a log: copy, pin, track…"), // a mouse action
+		Select:  b([]string{pickClick}, pickClick, "a log: copy, pin, track…"), // a mouse action
 		Marks:   b([]string{"[", "]"}, "[ ]", "bookmarks"),
 		Values:  b([]string{"k"}, "k", "tokens & values"),
 		Expand:  b([]string{"x"}, "x", "expand all calls"),
@@ -780,7 +780,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case msg.Text == "m":
 			m.mouse = !m.mouse
 			if m.mouse {
-				m.setStatus("mouse on: click ↗ to open code, click a line to expand it, ctrl+click it for more")
+				m.setStatus("mouse on: click ↗ to open code, click a line to expand it, " + pickClick + " it for more")
 			} else {
 				m.setStatus("mouse off: select text with the mouse; m turns it back on")
 			}
@@ -1009,7 +1009,7 @@ func (m *Model) click(x, y int) tea.Cmd {
 		m.dirty = true
 		return nil
 	}
-	// A click opens or closes the log; it doesn't select it (ctrl+click
+	// A click opens or closes the log; it doesn't select it (⌥+click
 	// does, select.go).
 	if expandable(e, m.on["details"]) {
 		// While following, new lines push the output up; while scrolled back,

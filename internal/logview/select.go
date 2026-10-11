@@ -3,6 +3,7 @@ package logview
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 	"strings"
 	"time"
 
@@ -11,8 +12,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Selecting logs: hold ctrl (or ⌥, or shift) and click a log, or
-// right-click it. That selects it and opens a menu by the mouse with what
+// Selecting logs: hold ⌥ (ctrl outside macOS, or shift) and click a log,
+// or right-click it. That selects it and opens a menu by the mouse with what
 // can be done with it:
 //
 //	   ╭─ 1 log ─────────────╮
@@ -29,6 +30,11 @@ import (
 //
 // Hiding a log leaves its row, empty, with a button that shows it again:
 // the logs around it stay where they were.
+
+// pickClick is the click that selects, as the help and the README say it:
+// ⌥ on a Mac, where terminals keep ctrl+click for their own menu; ctrl
+// elsewhere, where window managers often take alt+click.
+var pickClick = map[bool]string{true: "⌥+click", false: "ctrl+click"}[runtime.GOOS == "darwin"]
 
 type selAction struct {
 	icon, label, act string
@@ -308,7 +314,7 @@ func (m *Model) nextBookmark(dir int) tea.Cmd {
 		}
 	}
 	if n == 0 {
-		m.setStatus("⊘ no bookmarks yet · ctrl+click a log to bookmark it")
+		m.setStatus("⊘ no bookmarks yet · " + pickClick + " a log to bookmark it")
 	} else {
 		m.setStatus("⊘ no more bookmarks that way")
 	}

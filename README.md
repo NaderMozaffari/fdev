@@ -108,7 +108,7 @@ and more.
 <tr>
 <td valign="top">
 
-**Ctrl+click a log** for a menu by the mouse: copy, copy as cURL, filter,
+**⌥+click a log** (ctrl+click outside macOS) for a menu by the mouse: copy, copy as cURL, filter,
 pin, bookmark, track, hide or save.
 
 <img src="docs/media/select.png" alt="Two logs selected, with what can be done with them">
@@ -404,7 +404,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | click a line with `▸` | expand its headers and body, or the whole stack trace: they unfold, marked for a moment |
 | `x`, **⊞ open all** | open every network call (and the ones that come after); again to fold them |
 | `e`, click **… more lines · ⤢ open** | a long log (a big response body, a long print) shows its first rows; this opens all of it in a window: `↑` `↓` `pgup` `pgdn` `home` `end` scroll, `c` copies the body, `esc` closes |
-| ctrl+click a log (or ⌥+click, shift+click or right-click: whichever your terminal passes on) | select it and open a menu by the mouse: copy, copy the body, the URL or the call as cURL, only logs like it, hide logs like it, pin it to the top, bookmark, hide, track it, save, open in a window, open its code. With the menu open, shift with the click selects a range. A click elsewhere, `esc` or the wheel closes it. These have no keys, and a plain click only opens or closes a log |
+| ⌥+click a log on macOS, ctrl+click elsewhere (shift+click and right-click work too, where the terminal passes them on) | select it and open a menu by the mouse: copy, copy the body, the URL or the call as cURL, only logs like it, hide logs like it, pin it to the top, bookmark, hide, track it, save, open in a window, open its code. With the menu open, shift with the click selects a range. A click elsewhere, `esc` or the wheel closes it. These have no keys, and a plain click only opens or closes a log |
 | `[` `]` | the bookmark before or after |
 | `m` | mouse on/off; off (or holding ⌥/shift) lets you select text |
 | `z`, **⤢ full** | full screen: just the title and the logs; `z`, `esc` or **⤡ exit** in the corner bring the bars back |
