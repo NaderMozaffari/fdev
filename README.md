@@ -409,7 +409,8 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `x`, **⊞ open all** | open every network call (and the ones that come after); again to fold them |
 | `e`, click **… more lines · ⤢ open** | a long log (a big response body, a long print) shows its first rows; this opens all of it in a window: `↑` `↓` `pgup` `pgdn` `home` `end` scroll, `c` copies the body, `esc` closes |
 | ⌥+click a log on macOS, ctrl+click elsewhere (shift+click and right-click work too, where the terminal passes them on) | select it and open a menu by the mouse: copy, copy the body, the URL or the call as cURL, only logs like it, hide logs like it, pin it to the top, bookmark, hide, track it, save, open in a window, open its code. With the menu open, shift with the click selects a range. A click elsewhere, `esc` or the wheel closes it. These have no keys, and a plain click only opens or closes a log |
-| `[` `]` | the bookmark before or after |
+| `space`, **◆ checkpoint** | a checkpoint: a line across the logs with the time and how many logs came since the last one (`━━ ◆ checkpoint 2 · 16:04:12 · 38 logs since the last ━━`), to find your place again after looking away. fdev also puts one by itself every 5 minutes while logs come (`── ◇ 16:09:12 · every 5m ──`; the settings change it or turn it off). They are saved with the session |
+| `[` `]` | the bookmark or checkpoint before or after |
 | `m` | mouse on/off; off (or holding ⌥/shift) lets you select text |
 | `z`, **⤢ full** | full screen: just the title and the logs; `z`, `esc` or **⤡ exit** in the corner bring the bars back |
 | anything else | goes to flutter: `r` reload, `R` restart, `q` quit, ... |
@@ -481,6 +482,8 @@ Then the logs, for this project:
   of a second or more, so each burst (what one tap logs) is a group, and a
   response stays with its request however long it took; or a line where
   the tag changes (`╌╌ AuthRepo ╌╌`); or none.
+- **Checkpoint by itself**: every 1, 5 (the default), 10 or 30 minutes, when
+  logs came since the last checkpoint; or off, for only the ones you put.
 - **Persian and Arabic text**: most terminals (VS Code's, iTerm2, Ghostty,
   kitty, Windows Terminal) draw it unjoined and left to right; fdev joins
   the letters and lays it out right to left (numbers in it stay left to

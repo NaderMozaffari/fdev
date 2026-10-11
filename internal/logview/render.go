@@ -225,11 +225,18 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 		}
 		return out
 	}
-	if e.Level == "cleared" { // where the screen was cleared: a rule across it
+	if e.isRule() { // where the screen was cleared, or a checkpoint: a rule across
 		text := " " + strings.Trim(e.Text, "─ ") + " "
+		rule, style := "─", p.fg(m.th.PinkDim)
+		switch {
+		case e.Level == "checkpoint" && e.TextTone == ToneDim: // put by itself
+			style = p.fg(m.th.Muted)
+		case e.Level == "checkpoint":
+			rule, style = "━", p.fg(m.th.Info).Bold(true)
+		}
 		side := max((width-lipgloss.Width(text))/2, 2)
-		line := strings.Repeat("─", side) + text + strings.Repeat("─", max(width-side-lipgloss.Width(text), 2))
-		return []string{p.fg(m.th.PinkDim).Render(ansi.Truncate(line, width, ""))}
+		line := strings.Repeat(rule, side) + text + strings.Repeat(rule, max(width-side-lipgloss.Width(text), 2))
+		return []string{style.Render(ansi.Truncate(line, width, ""))}
 	}
 	c := m.cols()
 	if e.Kind == KindTool && (!c.aligned || m.o.Plain) {

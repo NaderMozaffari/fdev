@@ -161,7 +161,7 @@ func picks(msg tea.MouseClickMsg) bool {
 // log stays by the menu.
 func (m *Model) pick(x, y int, extend bool) tea.Cmd {
 	r, ok := m.rowAt(x, y)
-	if !ok || r.entry.Level == "cleared" || r.entry.hidden {
+	if !ok || r.entry.isRule() || r.entry.hidden {
 		if m.sel != nil {
 			m.unselect()
 		}
@@ -291,8 +291,8 @@ func (m *Model) selDo(act string) tea.Cmd {
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────
 
-// nextBookmark shows the next bookmarked log down (dir 1) or up (-1) from
-// the one it showed last, or from an end.
+// nextBookmark shows the next bookmarked log or checkpoint down (dir 1) or
+// up (-1) from the one it showed last, or from an end.
 func (m *Model) nextBookmark(dir int) tea.Cmd {
 	shown := m.shownEntries()
 	from := indexOf(shown, m.jumped)
@@ -303,20 +303,20 @@ func (m *Model) nextBookmark(dir int) tea.Cmd {
 		}
 	}
 	for i := from + dir; i >= 0 && i < len(shown); i += dir {
-		if shown[i].bookmarked {
+		if shown[i].bookmarked || shown[i].Level == "checkpoint" {
 			return m.jumpTo(shown[i])
 		}
 	}
 	n := 0
 	for _, e := range m.entries {
-		if e.bookmarked {
+		if e.bookmarked || e.Level == "checkpoint" {
 			n++
 		}
 	}
 	if n == 0 {
-		m.setStatus("⊘ no bookmarks yet · " + pickClick + " a log to bookmark it")
+		m.setStatus("⊘ no bookmarks or checkpoints yet · space puts a checkpoint, " + pickClick + " a log bookmarks it")
 	} else {
-		m.setStatus("⊘ no more bookmarks that way")
+		m.setStatus("⊘ no more bookmarks or checkpoints that way")
 	}
 	return nil
 }

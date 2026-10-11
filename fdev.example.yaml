@@ -20,6 +20,7 @@ logs:
   save: false       # save every session; ctrl+s saves one any time
   dir: .fdev/logs   # in the project; fdev puts a .gitignore of `*` in it
   group: pause      # a line between related logs: pause (bursts), tag, or off
+  checkpoint: 5m    # a checkpoint line by itself while logs come: 1m, 5m, 10m, 30m or off
   off: []           # key combinations that do nothing, e.g. [ctrl+l, ctrl+z]
   rtl: auto         # Persian/Arabic text: auto, fdev (joins it, right to left) or terminal
   values: []        # more keys to keep at hand (k), besides tokens: [userId, deviceId]

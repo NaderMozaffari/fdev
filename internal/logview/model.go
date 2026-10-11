@@ -98,6 +98,7 @@ type keyMap struct {
 	Filter, Toggles, Parts, Open, Mouse, Help key.Binding
 	Look, Save, Wipe, Full, Window            key.Binding
 	Select, Marks, Values, Expand, Keep       key.Binding
+	Checkpoint                                key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -105,29 +106,30 @@ func newKeyMap() keyMap {
 		return key.NewBinding(key.WithKeys(keys...), key.WithHelp(k, desc))
 	}
 	return keyMap{
-		Reload:  b([]string{"r"}, "r", "hot reload"),
-		Restart: b([]string{"R"}, "R", "hot restart"),
-		Quit:    b([]string{"q"}, "q", "quit app"),
-		Back:    b([]string{"esc", "q"}, "esc", "back"),
-		Scroll:  b([]string{"up", "down"}, "↑/↓", "scroll"),
-		Page:    b([]string{"pgup", "pgdown"}, "pgup/pgdn", "page"),
-		Ends:    b([]string{"home", "end"}, "home/end", "top/follow"),
-		Filter:  b([]string{"/"}, "/", "filter"),
-		Toggles: b([]string{"1", "9"}, "1-9", "show/hide logs"),
-		Wipe:    b([]string{"ctrl+l"}, "ctrl+l", "clear the screen (the log stays saved)"),
-		Parts:   b([]string{",", ".", ";"}, ", . ;", "time/level/tag"),
-		Open:    b([]string{"↗"}, "click ↗", "open code"), // a mouse action; the key never matches
-		Mouse:   b([]string{"m"}, "m", "mouse/select"),
-		Help:    b([]string{"?"}, "?", "more"),
-		Look:    b([]string{"l"}, "l", "look, theme & saving"),
-		Full:    b([]string{"z"}, "z", "full screen"),
-		Window:  b([]string{"e"}, "e", "open a long log in a window"),
-		Save:    b([]string{"ctrl+s"}, "ctrl+s", "save log"),
-		Select:  b([]string{pickClick}, pickClick, "a log: copy, pin, track…"), // a mouse action
-		Marks:   b([]string{"[", "]"}, "[ ]", "bookmarks"),
-		Values:  b([]string{"k"}, "k", "tokens & values"),
-		Expand:  b([]string{"x"}, "x", "expand all calls"),
-		Keep:    b([]string{"S"}, "⤓ save", "save some, with a subject"), // the bar's button; S is flutter's
+		Reload:     b([]string{"r"}, "r", "hot reload"),
+		Restart:    b([]string{"R"}, "R", "hot restart"),
+		Quit:       b([]string{"q"}, "q", "quit app"),
+		Back:       b([]string{"esc", "q"}, "esc", "back"),
+		Scroll:     b([]string{"up", "down"}, "↑/↓", "scroll"),
+		Page:       b([]string{"pgup", "pgdown"}, "pgup/pgdn", "page"),
+		Ends:       b([]string{"home", "end"}, "home/end", "top/follow"),
+		Filter:     b([]string{"/"}, "/", "filter"),
+		Toggles:    b([]string{"1", "9"}, "1-9", "show/hide logs"),
+		Wipe:       b([]string{"ctrl+l"}, "ctrl+l", "clear the screen (the log stays saved)"),
+		Parts:      b([]string{",", ".", ";"}, ", . ;", "time/level/tag"),
+		Open:       b([]string{"↗"}, "click ↗", "open code"), // a mouse action; the key never matches
+		Mouse:      b([]string{"m"}, "m", "mouse/select"),
+		Help:       b([]string{"?"}, "?", "more"),
+		Look:       b([]string{"l"}, "l", "look, theme & saving"),
+		Full:       b([]string{"z"}, "z", "full screen"),
+		Window:     b([]string{"e"}, "e", "open a long log in a window"),
+		Save:       b([]string{"ctrl+s"}, "ctrl+s", "save log"),
+		Select:     b([]string{pickClick}, pickClick, "a log: copy, pin, track…"), // a mouse action
+		Marks:      b([]string{"[", "]"}, "[ ]", "bookmarks & checkpoints"),
+		Checkpoint: b([]string{"space"}, "space", "checkpoint: mark where you are"),
+		Values:     b([]string{"k"}, "k", "tokens & values"),
+		Expand:     b([]string{"x"}, "x", "expand all calls"),
+		Keep:       b([]string{"S"}, "⤓ save", "save some, with a subject"), // the bar's button; S is flutter's
 	}
 }
 
@@ -207,21 +209,26 @@ type Model struct {
 	// where their menu was opened.
 	sel, anchor  *Entry
 	menuX, menuY int
-	menuFollow   bool     // the logs followed the output before the menu opened
-	jumped       *Entry   // the log [ or ] showed last
-	pins         []*Entry // pinned, in the order they were (sticky.go)
-	tracks       []*track
-	values       []*kept // tokens and such, at hand (values.go, vault.go)
-	vault        *vault
-	saveForm     *huh.Form // saving some logs (saveform.go)
-	saveAns      saveAnswer
-	saveSel      []*Entry // the logs selected when the form opened
-	expandAll    bool     // x: every network log open
-	mouse        bool
-	toast        string
-	toastUntil   time.Time
-	status       string
-	statusUntil  time.Time
+	menuFollow   bool   // the logs followed the output before the menu opened
+	jumped       *Entry // the log [ or ] showed last
+	// Checkpoints (checkpoint.go): how many were put by hand, how many in
+	// all, the logs since the last one, and when it was.
+	checkpoints, marks int
+	sinceMark          int
+	lastMark           time.Time
+	pins               []*Entry // pinned, in the order they were (sticky.go)
+	tracks             []*track
+	values             []*kept // tokens and such, at hand (values.go, vault.go)
+	vault              *vault
+	saveForm           *huh.Form // saving some logs (saveform.go)
+	saveAns            saveAnswer
+	saveSel            []*Entry // the logs selected when the form opened
+	expandAll          bool     // x: every network log open
+	mouse              bool
+	toast              string
+	toastUntil         time.Time
+	status             string
+	statusUntil        time.Time
 }
 
 // term is where the command runs: a pty, or pipes on Windows (term_*.go).
@@ -460,6 +467,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			if m.task != nil || m.parser.InFlight() > 0 {
 				m.dirty = true // the progress bar moves, requests wait
 			}
+			m.autoCheckpoint()
 			return cmd
 		}
 	case openedMsg:
@@ -617,6 +625,9 @@ func (m *Model) replay() {
 func (m *Model) addLine(line string) { m.addLineAt(line, time.Now()) }
 
 func (m *Model) addLineAt(line string, now time.Time) {
+	if m.o.Replay != "" && m.replayCheckpoint(line, now) {
+		return
+	}
 	res := m.parser.Line(line, now)
 	e := res.New
 	if e == nil {
@@ -637,6 +648,9 @@ func (m *Model) addLineAt(line string, now time.Time) {
 		m.growTag(w)
 	}
 	m.counts[e.Category]++
+	if e.Kind != KindTool {
+		m.sinceMark++
+	}
 	if e.Category == "error" {
 		m.errors++
 	}
@@ -772,6 +786,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return nil
 		case msg.Text == "x" && !m.o.Plain:
 			m.toggleExpandAll()
+			return nil
+		case msg.String() == "space" && !m.exited && !m.o.Plain:
+			m.checkpoint(false)
 			return nil
 		case msg.Text == "[":
 			return m.nextBookmark(-1)
@@ -1015,7 +1032,7 @@ func (m *Model) click(x, y int) tea.Cmd {
 		m.openDialog(e)
 		return nil
 	}
-	if e.Level == "cleared" {
+	if e.isRule() {
 		return nil
 	}
 	if e.hidden {
@@ -1252,7 +1269,7 @@ func (m *Model) fullHelp() [][]key.Binding {
 		{k.Reload, k.Restart, k.Quit},
 		{k.Scroll, k.Page, k.Ends},
 		{k.Toggles, k.Parts, k.Filter},
-		{k.Select, k.Marks, k.Values},
+		{k.Select, k.Marks, k.Checkpoint, k.Values},
 		{k.Open, k.Mouse, k.Expand, k.Window},
 		{k.Look, k.Save, k.Keep, k.Wipe, k.Full},
 	}

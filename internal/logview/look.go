@@ -213,6 +213,15 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 				huh.NewOption("When the tag changes · a run of one tag is a group", config.GroupTag),
 				huh.NewOption("Off", config.GroupOff),
 			).Value(&look.Group),
+			huh.NewSelect[string]().Title("Checkpoint by itself").
+				Description("a line across the logs, when logs came since the last one; space puts one any time").
+				Options(
+					huh.NewOption("Every minute", "1m"),
+					huh.NewOption("Every 5 minutes", "5m"),
+					huh.NewOption("Every 10 minutes", "10m"),
+					huh.NewOption("Every 30 minutes", "30m"),
+					huh.NewOption("Off · only the ones you put", config.CheckpointOff),
+				).Value(&look.Checkpoint),
 			huh.NewSelect[string]().Title("Time").Options(
 				huh.NewOption("14:02:11", config.TimeClock),
 				huh.NewOption("14:02:11.482", config.TimeMillis),

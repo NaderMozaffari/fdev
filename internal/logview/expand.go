@@ -57,7 +57,7 @@ func (m *Model) onExpander(e *Entry, x, y int) bool {
 func (m *Model) hoverLog(x, y int) {
 	was := m.hoverEntry
 	m.hoverEntry = nil
-	if r, ok := m.rowAt(x, y); ok && r.entry.Level != "cleared" {
+	if r, ok := m.rowAt(x, y); ok && !r.entry.isRule() {
 		m.hoverEntry = r.entry
 	}
 	if m.hoverEntry != was {

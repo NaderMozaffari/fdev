@@ -142,6 +142,9 @@ func (m *Model) barItems() []barItem {
 		actions.items = append(actions.items, barItem{name: "look", text: m.chip("look", "⚙ look", false, nil)})
 	}
 	if m.o.Replay == "" {
+		if !m.o.Plain && !m.exited {
+			actions.items = append(actions.items, barItem{name: "checkpoint", text: m.chip("checkpoint", "◆ checkpoint", false, nil)})
+		}
 		actions.items = append(actions.items, barItem{name: "wipe", text: m.chip("wipe", "⌫ clear", false, nil)})
 	}
 	actions.items = append(actions.items,
@@ -238,6 +241,8 @@ func (m *Model) clickBar(name string) tea.Cmd {
 		m.toggleExpandAll()
 	case name == "values":
 		m.openVault()
+	case name == "checkpoint":
+		m.checkpoint(false)
 	case name == "wipe":
 		m.clearScreen("cleared")
 	case name == "help":
