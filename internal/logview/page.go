@@ -58,6 +58,7 @@ func (m *Model) closePage() {
 	if m.raw == nil {
 		return
 	}
+	m.settle()
 	k := len(m.pages)
 	p := &page{from: m.size, loaded: true, counted: true}
 	var b strings.Builder
@@ -66,9 +67,7 @@ func (m *Model) closePage() {
 			continue
 		}
 		e.saved = true
-		for _, r := range e.Raw {
-			b.WriteString(rawLine(e.Time, r) + "\n")
-		}
+		b.WriteString(e.rawLines())
 		if e.page == k {
 			if p.entries == 0 {
 				p.at = e.Time
@@ -343,7 +342,7 @@ func readEntries(path string, from, to int64, day, at time.Time, values []string
 		}
 	}
 	p.Abandon()
-	return out, nil
+	return foldAll(out), nil
 }
 
 // startRecording opens the session's file, which the pages go into. With

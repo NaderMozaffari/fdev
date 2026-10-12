@@ -322,6 +322,10 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 		for _, f := range e.Fields {
 			text += " " + muted.Render(f.Key+"=") + p.tone(f.Tone).Render(f.Value)
 		}
+		if len(e.repeats) > 0 {
+			times, span, _ := strings.Cut(e.repeatText(c.timeFormat), " · ")
+			text += "  " + p.fg(m.th.Indigo).Bold(true).Render(times) + muted.Render(" · "+span)
+		}
 	}
 	var marked []string
 	if e.bookmarked {

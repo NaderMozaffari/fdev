@@ -298,6 +298,8 @@ type exported struct {
 	Body    json.RawMessage   `json:"body,omitempty"`
 	At      string            `json:"at,omitempty"`
 	Marked  bool              `json:"bookmarked,omitempty"`
+	Times   int               `json:"times,omitempty"` // how many times it came in a row, when more than once
+	Until   string            `json:"until,omitempty"` // when it came the last time
 }
 
 func (m *Model) jsonExport(subject string, tags []string, entries []*Entry) ([]byte, error) {
@@ -312,6 +314,9 @@ func (m *Model) jsonExport(subject string, tags []string, entries []*Entry) ([]b
 	for _, e := range entries {
 		x := exported{Time: e.Time.Format(time.RFC3339Nano), Level: e.Level, Tag: e.Tag, Text: stripANSI(e.Text),
 			Name: e.Name, URL: e.URL, At: e.At, Marked: e.bookmarked, Stack: texts(e.Stack)}
+		if len(e.repeats) > 0 {
+			x.Times, x.Until = e.times(), e.until().Format(time.RFC3339Nano)
+		}
 		if len(e.Fields) > 0 {
 			x.Fields = map[string]string{}
 			for _, f := range e.Fields {

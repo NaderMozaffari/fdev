@@ -82,17 +82,18 @@ type Entry struct {
 	// A request and its response find each other (by the record's id, or
 	// method and URL): a request without one is still waiting.
 	Request, Response *Entry
-	call              int     // the call's number, on its request and its response (pairs.go)
-	Values            []Value // values to keep at hand, found in this log (values.go)
-	abandoned         bool    // a request whose response won't come: a restart, the end of the run
-	bookmarked        bool    // marked to find again: [ and ] jump between them
-	pinned            bool    // kept at the top of the logs (sticky.go)
-	hidden            bool    // folded to an empty row with a button that shows it again
-	clipped           bool    // too long to show folded: rows were left out
-	page              int     // the page it is in (page.go); -1 for a checkpoint or a clear
-	saved             bool    // in the session's file
-	search            string  // folded text the filter matches
-	cache             []row   // rendered rows, valid for the settings below
+	call              int      // the call's number, on its request and its response (pairs.go)
+	Values            []Value  // values to keep at hand, found in this log (values.go)
+	abandoned         bool     // a request whose response won't come: a restart, the end of the run
+	bookmarked        bool     // marked to find again: [ and ] jump between them
+	pinned            bool     // kept at the top of the logs (sticky.go)
+	hidden            bool     // folded to an empty row with a button that shows it again
+	clipped           bool     // too long to show folded: rows were left out
+	page              int      // the page it is in (page.go); -1 for a checkpoint or a clear
+	saved             bool     // in the session's file
+	repeats           []*Entry // the same log again, right after it (repeat.go)
+	search            string   // folded text the filter matches
+	cache             []row    // rendered rows, valid for the settings below
 	cached            cacheKey
 }
 
@@ -659,6 +660,10 @@ func toLines(texts []string, kind LineKind) []Line {
 	}
 	return out
 }
+
+// Growing is whether the last entry may still get lines: an exception
+// block or a stack trace is still coming.
+func (p *Parser) Growing() bool { return p.inException || p.errorGroup }
 
 func (p *Parser) add(e *Entry) Result {
 	p.last = e

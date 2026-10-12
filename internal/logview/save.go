@@ -99,6 +99,9 @@ func writeEntry(b *strings.Builder, e *Entry) {
 	if e.At != "" {
 		line += "  (" + e.At + ")"
 	}
+	if len(e.repeats) > 0 {
+		line += "  " + e.repeatText("15:04:05.000")
+	}
 	fmt.Fprintf(b, "%s %-4s  %s\n", stamp, name, line)
 	for _, group := range [][]Line{e.Lines, e.Stack, e.Details} {
 		for _, l := range group {

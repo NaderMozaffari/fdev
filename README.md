@@ -374,6 +374,10 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 - A request still waiting for its response **spins**, with the time so far;
   once the response comes, the request says what it got (`→ 200 142ms`),
   and the header counts the calls in flight.
+- A log that comes **again and again** in a row is one line that says how
+  many times and from when to when (`Billing: retrying  ×12 · 16:04:01 –
+  16:04:30`); any other log in between starts a new count. Each one is
+  still in the saved log, at its own time.
 - Toggle **categories** while the app runs (`1`-`9`), and **filter** by
   text.
 - Under the logs, the running command's keys are **buttons**, each with its

@@ -238,6 +238,8 @@ type Model struct {
 	live    int    // logs since the last page closed
 	after   *Entry // where to jump once the pages being read are in
 	keepRaw bool   // the file stays with saving off: the screen was cleared
+
+	unsettled *Entry // the last log, when it may still grow before it is folded (repeat.go)
 }
 
 // term is where the command runs: a pty, or pipes on Windows (term_*.go).
@@ -604,12 +606,8 @@ func (m *Model) addLineAt(line string, now time.Time) {
 	if e == nil {
 		return
 	}
+	m.settle()
 	e.page = len(m.pages)
-	m.entries = append(m.entries, e)
-	if len(m.entries) > maxEntries {
-		m.entries = m.entries[len(m.entries)-maxEntries:]
-	}
-	m.growTag(tagWidth(e))
 	m.counts[e.Category]++
 	if e.Kind != KindTool {
 		m.sinceMark++
@@ -618,6 +616,17 @@ func (m *Model) addLineAt(line string, now time.Time) {
 	if e.Category == "error" {
 		m.errors++
 	}
+	if m.foldNew(e) {
+		return
+	}
+	if m.parser.Growing() {
+		m.unsettled = e
+	}
+	m.entries = append(m.entries, e)
+	if len(m.entries) > maxEntries {
+		m.entries = m.entries[len(m.entries)-maxEntries:]
+	}
+	m.growTag(tagWidth(e))
 	if m.expandAll && e.Category == "network" && len(e.Details) > 0 {
 		e.Expanded = true
 	}
