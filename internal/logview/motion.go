@@ -181,37 +181,29 @@ func (m *Model) litRows(rows []row) []row {
 
 // ── Clearing ─────────────────────────────────────────────────────────────────
 
-// clearScreen empties the screen, not the log: everything so far is saved
-// first (saving starts if it was off), the session's file goes on, and a
-// line in it marks where the screen was cleared.
+// clearScreen empties the screen, not the log: everything so far goes into
+// the session's file, the one it started (kept even with saving off), a line
+// in it marks where the screen was cleared, and it goes on after it. What
+// came before is not offered again on the screen.
 func (m *Model) clearScreen(why string) {
 	if m.o.Replay == "" {
-		if m.raw == nil {
-			if err := m.startRecording(); err != nil {
-				m.setStatus("✘ not cleared, can't save logs: " + err.Error())
-				return
-			}
+		if err := m.startRecording(); err != nil {
+			m.setStatus("✘ not cleared, can't save logs: " + err.Error())
+			return
 		}
+		m.keepRaw = true
 	}
-	for _, e := range m.entries {
-		e.cleared = true
+	m.closePage()
+	for _, p := range m.pages {
+		p.gone, p.kept = true, nil
 	}
-	now := time.Now()
-	sep := &Entry{Kind: KindTool, Level: "cleared", Time: now,
-		Text: "──── " + why + " at " + now.Format("15:04:05") + " · what came before is in the saved log ────"}
-	sep.Raw = []string{"──── fdev: " + why + " at " + now.Format("15:04:05") + " ────"}
-	m.entries = append(m.entries, sep)
-	if m.raw != nil {
-		for _, r := range sep.Raw {
-			_, _ = m.raw.WriteString(rawLine(now, r) + "\n")
-		}
-	}
+	sep := clearEntry(why+" at "+time.Now().Format("15:04:05"), time.Now())
+	m.saveRule(sep)
+	m.entries = []*Entry{sep}
 	m.counts, m.errors, m.unseen = map[string]int{}, 0, 0
-	m.unfolding, m.lit = nil, nil
-	if m.o.Replay == "" {
-		if path, err := m.save(); err == nil {
-			m.setStatus("✓ cleared · everything so far is in " + path)
-		}
+	m.unfolding, m.lit, m.jumped, m.after = nil, nil, nil, nil
+	if m.raw != nil {
+		m.setStatus("✓ cleared · everything so far is in " + relative(m.o.Root, m.file))
 	}
 	m.changed()
 }

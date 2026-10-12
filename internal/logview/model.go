@@ -140,7 +140,7 @@ type Model struct {
 	look    config.Look
 	version int
 	maxTag  int      // the widest tag so far, for the tag column
-	raw     *os.File // the session's raw log, while saving
+	raw     *os.File // the session's file, which the pages go into (page.go)
 
 	lookForm *huh.Form
 	formLook config.Look
@@ -212,10 +212,10 @@ type Model struct {
 	menuFollow   bool   // the logs followed the output before the menu opened
 	jumped       *Entry // the log [ or ] showed last
 	// Checkpoints (checkpoint.go): how many were put by hand, how many in
-	// all, the logs since the last one, and when it was.
+	// all, the logs since the last one, and when the last log came.
 	checkpoints, marks int
 	sinceMark          int
-	lastMark           time.Time
+	lastLog            time.Time
 	pins               []*Entry // pinned, in the order they were (sticky.go)
 	tracks             []*track
 	values             []*kept // tokens and such, at hand (values.go, vault.go)
@@ -229,6 +229,15 @@ type Model struct {
 	toastUntil         time.Time
 	status             string
 	statusUntil        time.Time
+
+	// Pages (page.go): the logs between checkpoints, the older ones in the
+	// session's file only.
+	pages   []*page
+	file    string // the session's file: the raw log, or the one replayed
+	size    int64  // how long it is
+	live    int    // logs since the last page closed
+	after   *Entry // where to jump once the pages being read are in
+	keepRaw bool   // the file stays with saving off: the screen was cleared
 }
 
 // term is where the command runs: a pty, or pipes on Windows (term_*.go).
@@ -273,10 +282,8 @@ func New(o Options) (*Model, tea.Cmd) {
 		return m, nil
 	}
 	m.pty = f
-	if m.look.Save {
-		if err := m.startRecording(); err != nil {
-			m.setStatus("✘ can't save logs: " + err.Error())
-		}
+	if err := m.startRecording(); err != nil {
+		m.setStatus("✘ can't keep logs in a file: " + err.Error())
 	}
 	m.out = make(chan []byte, 64)
 	go read(f, m.out)
@@ -425,7 +432,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		// Everything but the viewer's own messages goes to the form: huh
 		// sends itself messages too (focus, next field).
 		switch msg.(type) {
-		case outputMsg, closedMsg, exitMsg, openedMsg, spinner.TickMsg, tea.WindowSizeMsg:
+		case outputMsg, closedMsg, exitMsg, openedMsg, pagedMsg, spinner.TickMsg, tea.WindowSizeMsg:
 		default:
 			if m.saveForm != nil {
 				return m.updateSaveForm(msg)
@@ -446,6 +453,8 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		return m.listen()
 	case motionMsg:
 		return m.motion()
+	case pagedMsg:
+		return m.paged(msg)
 	case closedMsg:
 		if m.partial != "" {
 			m.addLine(strings.TrimSuffix(m.partial, "\r"))
@@ -455,7 +464,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		m.exited, m.code, m.err, m.took = true, msg.code, msg.err, time.Since(m.started)
 		m.parser.Abandon()
 		m.version++
-		if m.raw != nil {
+		if m.recording() {
 			if path, err := m.save(); err == nil {
 				m.setStatus("✓ saved " + path)
 			}
@@ -587,69 +596,24 @@ func completeUTF8(b []byte) int {
 	return len(b)
 }
 
-// replay reads a saved session into the viewer, as if it had just run.
-func (m *Model) replay() {
-	m.exited = true
-	if !strings.HasSuffix(m.o.Replay, ".raw.log") {
-		m.o.Plain = true // already drawn: just text
-	}
-	data, err := os.ReadFile(m.o.Replay)
-	if err != nil {
-		m.err, m.code = err, -1
-		m.entries = append(m.entries, &Entry{Kind: KindTool, Text: "can't read it: " + err.Error(), TextTone: ToneRed, Time: time.Now()})
-		return
-	}
-	if info, err := os.Stat(m.o.Replay); err == nil {
-		m.started = info.ModTime()
-	}
-	if base := filepath.Base(m.o.Replay); len(base) > len(timeLayout) {
-		if t, err := time.ParseInLocation(timeLayout, base[:len(timeLayout)], time.Local); err == nil {
-			m.started = t
-		}
-	}
-	day, last := m.started, m.started
-	for _, line := range strings.Split(strings.TrimRight(string(data), "\n"), "\n") {
-		var t time.Time
-		t, line = splitRaw(strings.TrimSuffix(line, "\r"), day, last)
-		m.addLineAt(line, t)
-		last = t
-	}
-	if m.partial != "" {
-		m.addLineAt(m.partial, last)
-		m.partial = ""
-	}
-	m.took = last.Sub(m.started)
-	m.dirty = true
-}
-
 func (m *Model) addLine(line string) { m.addLineAt(line, time.Now()) }
 
 func (m *Model) addLineAt(line string, now time.Time) {
-	if m.o.Replay != "" && m.replayCheckpoint(line, now) {
-		return
-	}
 	res := m.parser.Line(line, now)
 	e := res.New
 	if e == nil {
 		return
 	}
+	e.page = len(m.pages)
 	m.entries = append(m.entries, e)
 	if len(m.entries) > maxEntries {
 		m.entries = m.entries[len(m.entries)-maxEntries:]
 	}
-	if m.raw != nil {
-		for _, r := range e.Raw {
-			fmt.Fprintln(m.raw, rawLine(e.Time, r))
-		}
-	}
-	if w := lipgloss.Width(e.Tag); e.Category == "network" {
-		m.growTag(len(e.method()))
-	} else if e.Kind != KindTool {
-		m.growTag(w)
-	}
+	m.growTag(tagWidth(e))
 	m.counts[e.Category]++
 	if e.Kind != KindTool {
 		m.sinceMark++
+		m.lastLog = now
 	}
 	if e.Category == "error" {
 		m.errors++
@@ -665,6 +629,27 @@ func (m *Model) addLineAt(line string, now time.Time) {
 	if !m.follow && m.visible(e) {
 		m.unseen++
 	}
+	// A long page closes by itself, so that the logs can leave memory even
+	// when they never go quiet.
+	if m.live++; m.live >= pageSize {
+		if m.o.Plain {
+			m.closePage()
+			m.pageOut()
+		} else {
+			m.checkpoint(true)
+		}
+	}
+}
+
+// tagWidth is how wide the tag column needs to be for e.
+func tagWidth(e *Entry) int {
+	switch {
+	case e.Category == "network":
+		return len(e.method())
+	case e.Kind != KindTool:
+		return lipgloss.Width(e.Tag)
+	}
+	return 0
 }
 
 // growTag widens the tag column; everything is drawn again when it does.
@@ -678,9 +663,6 @@ func (m *Model) growTag(w int) {
 }
 
 func (m *Model) visible(e *Entry) bool {
-	if e.cleared {
-		return false
-	}
 	if m.o.Plain {
 		return m.matches(e, m.terms)
 	}
@@ -757,6 +739,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.refresh()
 		m.vp.GotoBottom()
 		m.follow, m.unseen = true, 0
+		m.pageOut()
 		return nil
 	}
 
@@ -859,10 +842,7 @@ func (m *Model) done() tea.Cmd {
 	if m.pty != nil {
 		_ = m.pty.Close()
 	}
-	if m.raw != nil {
-		_ = m.raw.Close()
-		m.raw = nil
-	}
+	m.stopRecording()
 	msg := DoneMsg{Code: m.code, Err: m.err, Took: m.took, Errors: m.errors, Replay: m.o.Replay != ""}
 	return func() tea.Msg { return msg }
 }
@@ -1025,6 +1005,10 @@ func (m *Model) click(x, y int) tea.Cmd {
 	if icon := m.gutterW + m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
 		return m.open(e)
 	}
+	if e.Level == "paged" {
+		m.follow = false // the page opens above what is shown
+		return m.pageIn(e.page)
+	}
 	if m.onExpander(e, x, y) {
 		return m.toggleExpanded(e)
 	}
@@ -1179,7 +1163,7 @@ func (m *Model) header() string {
 		right = th.Badge(th.Cream, th.Indigo).Render("saved") + muted.Render(" "+m.started.Format("Mon 2 Jan 15:04")+" · "+short(m.took))
 	case !m.exited:
 		right = m.spin.View() + muted.Render("running "+short(time.Since(m.started)))
-		if m.raw != nil {
+		if m.recording() {
 			right = lipgloss.NewStyle().Foreground(th.Red).Render("● rec") + muted.Render(" • ") + right
 		}
 	case m.code == 0 && m.err == nil:
@@ -1381,20 +1365,17 @@ func (m *Model) setUI(ui config.UI, save bool) {
 }
 
 func (m *Model) applyLook(look config.Look) {
+	saved := m.recording()
 	m.look = look.WithDefaults()
 	if m.o.OnLook != nil {
 		m.o.OnLook(m.look)
 	}
-	switch {
-	case m.look.Save && m.raw == nil:
+	if m.look.Save && m.o.Replay == "" && !saved {
 		if err := m.startRecording(); err != nil {
 			m.setStatus("✘ can't save logs: " + err.Error())
 		} else {
 			m.setStatus("● saving this session to " + m.look.Dir)
 		}
-	case !m.look.Save && m.raw != nil:
-		_ = m.raw.Close()
-		m.raw = nil
 	}
 	m.offKeys()
 	m.changed()

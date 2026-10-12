@@ -233,6 +233,8 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 			style = p.fg(m.th.Muted)
 		case e.Level == "checkpoint":
 			rule, style = "━", p.fg(m.th.Info).Bold(true)
+		case e.Level == "paged":
+			rule, style = "┄", p.tone(e.TextTone)
 		}
 		side := max((width-lipgloss.Width(text))/2, 2)
 		line := strings.Repeat(rule, side) + text + strings.Repeat(rule, max(width-side-lipgloss.Width(text), 2))

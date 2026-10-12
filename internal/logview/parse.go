@@ -89,7 +89,8 @@ type Entry struct {
 	pinned            bool    // kept at the top of the logs (sticky.go)
 	hidden            bool    // folded to an empty row with a button that shows it again
 	clipped           bool    // too long to show folded: rows were left out
-	cleared           bool    // before a clear: in the saved log, off the screen
+	page              int     // the page it is in (page.go); -1 for a checkpoint or a clear
+	saved             bool    // in the session's file
 	search            string  // folded text the filter matches
 	cache             []row   // rendered rows, valid for the settings below
 	cached            cacheKey

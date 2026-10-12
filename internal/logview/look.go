@@ -214,12 +214,11 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 				huh.NewOption("Off", config.GroupOff),
 			).Value(&look.Group),
 			huh.NewSelect[string]().Title("Checkpoint by itself").
-				Description("a line across the logs, when logs came since the last one; space puts one any time").
+				Description("a line across the logs when they go quiet; older logs then wait in the session's file, and come back when you go to them · space puts one any time").
 				Options(
-					huh.NewOption("Every minute", "1m"),
-					huh.NewOption("Every 5 minutes", "5m"),
-					huh.NewOption("Every 10 minutes", "10m"),
-					huh.NewOption("Every 30 minutes", "30m"),
+					huh.NewOption("After 10 seconds without logs", "10s"),
+					huh.NewOption("After 30 seconds without logs", "30s"),
+					huh.NewOption("After a minute without logs", "1m"),
 					huh.NewOption("Off · only the ones you put", config.CheckpointOff),
 				).Value(&look.Checkpoint),
 			huh.NewSelect[string]().Title("Time").Options(

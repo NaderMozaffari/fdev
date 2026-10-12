@@ -402,14 +402,14 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `l` | layout, labels, spacing, group lines, time, saving, turned-off shortcuts |
 | `ctrl+s` | save the whole log to `.fdev/logs` |
 | **⤓ save** | save some logs, with a subject and tags: the selected ones, the ones shown, the bookmarked ones or all, as text (opens in fdev again), Markdown or JSON |
-| `ctrl+l`, **⌫ clear** | clear the screen, not the log: what came before is saved (saving starts if it was off) and the session's file goes on after a `──── cleared ────` line; flutter's `c` does the same |
+| `ctrl+l`, **⌫ clear** | clear the screen, not the log: what came before goes into the session's file (the one it started, kept even with saving off) and the file goes on after a `──── cleared ────` line; flutter's `c` does the same |
 | `↑` `↓` `pgup` `pgdn` `home` `end`, mouse wheel | scroll, smoothly (the wheel speeds up as it keeps turning); `end` follows new output again |
 | click `↗` | open the code that logged the line |
 | **▸ more** on a log | the mouse over a log with more to show (headers and body, a long stack trace) brings up **▸ more** at the right of its row; a click on it unfolds them, marked for a moment, and **▾ less** folds them again. A click elsewhere on a log leaves it as it is |
 | `x`, **⊞ open all** | open every network call (and the ones that come after); again to fold them |
 | `e`, click **… more lines · ⤢ open** | a long log (a big response body, a long print) shows its first rows; this opens all of it in a window: `↑` `↓` `pgup` `pgdn` `home` `end` scroll, `c` copies the body, `esc` closes |
 | ⌥+click a log on macOS, ctrl+click elsewhere (shift+click and right-click work too, where the terminal passes them on) | select it and open a menu by the mouse: copy, copy the body, the URL or the call as cURL, only logs like it, hide logs like it, pin it to the top, bookmark, hide, track it, save, open in a window, open its code. With the menu open, shift with the click selects a range. A click elsewhere, `esc` or the wheel closes it. These have no keys, and a plain click only opens or closes a log |
-| `space`, **◆ checkpoint** | a checkpoint: a line across the logs with the time and how many logs came since the last one (`━━ ◆ checkpoint 2 · 16:04:12 · 38 logs since the last ━━`), to find your place again after looking away. fdev also puts one by itself every 5 minutes while logs come (`── ◇ 16:09:12 · every 5m ──`; the settings change it or turn it off). They are saved with the session |
+| `space`, **◆ checkpoint** | a checkpoint: a line across the logs with the time and how many logs came since the last one (`━━ ◆ checkpoint 2 · 16:04:12 · 38 logs since the last ━━`), to find your place again after looking away. fdev also puts one by itself once no log came for 10 seconds (`── ◇ 16:09:12 · 112 logs since the last ──`; the settings change it or turn it off), and after 1000 logs without one. Each checkpoint puts the logs before it in the session's file in one go, and in a long session the older ones leave memory, so the viewer stays fast: in their place is a `┄┄ ⋯ 112 logs here, in the session's file · click to load ┄┄` line, and a click on it, or `[` `]` reaching the checkpoint next to it, loads them back. They are saved with the session |
 | `[` `]` | the bookmark or checkpoint before or after |
 | `m` | mouse on/off; off (or holding ⌥/shift) lets you select text |
 | `z`, **⤢ full** | full screen: just the title and the logs; `z`, `esc` or **⤡ exit** in the corner bring the bars back |
@@ -482,8 +482,9 @@ Then the logs, for this project:
   of a second or more, so each burst (what one tap logs) is a group, and a
   response stays with its request however long it took; or a line where
   the tag changes (`╌╌ AuthRepo ╌╌`); or none.
-- **Checkpoint by itself**: every 1, 5 (the default), 10 or 30 minutes, when
-  logs came since the last checkpoint; or off, for only the ones you put.
+- **Checkpoint by itself**: after 10 (the default) or 30 seconds, or a
+  minute, without logs, when logs came since the last checkpoint; or off,
+  for only the ones you put.
 - **Persian and Arabic text**: most terminals (VS Code's, iTerm2, Ghostty,
   kitty, Windows Terminal) draw it unjoined and left to right; fdev joins
   the letters and lays it out right to left (numbers in it stay left to
@@ -499,8 +500,9 @@ Then the logs, for this project:
 
 `ctrl+s` saves the whole log any time: every line, whatever is hidden, with
 stack traces, headers and bodies. Logs go to `.fdev/logs/` in the project
-(`<time>_<target>.log`, and `.raw.log` with the original output while
-recording, each line after the time it arrived); fdev puts a `.gitignore`
+(`<time>_<target>.log`, and `.raw.log` with the original output, each line
+after the time it arrived, written at each checkpoint; with saving off it
+goes when you leave, unless you cleared the screen); fdev puts a `.gitignore`
 of `*` in that directory, so git sees nothing there and no tracked file
 changes. The last 30 sessions are kept, and every starred one.
 

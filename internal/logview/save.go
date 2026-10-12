@@ -54,32 +54,9 @@ func (m *Model) sessionBase() string {
 	return m.started.Format("2006-01-02_15-04-05") + "_" + strings.Trim(name, "-")
 }
 
-// startRecording opens the raw log, which gets every output line as it
-// arrives (so it survives a crash of fdev).
-func (m *Model) startRecording() error {
-	if m.raw != nil {
-		return nil
-	}
-	dir, err := logsDir(m.o.Root, m.look.Dir)
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(filepath.Join(dir, m.sessionBase()+".raw.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		return err
-	}
-	m.raw = f
-	for _, e := range m.entries { // what came before recording started
-		for _, r := range e.Raw {
-			fmt.Fprintln(f, rawLine(e.Time, r))
-		}
-	}
-	prune(dir)
-	return nil
-}
-
 // save writes the readable log: every entry, whatever is hidden, with its
-// stack trace, headers and body. It returns the path, relative to the root.
+// stack trace, headers and body, read back from the session's file. It
+// returns the path, relative to the root.
 func (m *Model) save() (string, error) {
 	dir, err := logsDir(m.o.Root, m.look.Dir)
 	if err != nil {
@@ -92,7 +69,7 @@ func (m *Model) save() (string, error) {
 		fmt.Fprintf(&b, "# %s\n", m.o.Note)
 	}
 	b.WriteString("\n")
-	for _, e := range m.entries {
+	for _, e := range m.allEntries() {
 		writeEntry(&b, e)
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {

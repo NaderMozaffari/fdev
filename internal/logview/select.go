@@ -303,13 +303,20 @@ func (m *Model) nextBookmark(dir int) tea.Cmd {
 		}
 	}
 	for i := from + dir; i >= 0 && i < len(shown); i += dir {
-		if shown[i].bookmarked || shown[i].Level == "checkpoint" {
-			return m.jumpTo(shown[i])
+		e := shown[i]
+		if e.Level == "paged" { // a bookmark in a page out of memory
+			if b := m.pages[e.page].bookmark(dir); b != nil {
+				m.after, m.jumped = b, b
+				return m.pageIn(e.page)
+			}
+		}
+		if e.bookmarked || e.Level == "checkpoint" {
+			return m.reach(e)
 		}
 	}
 	n := 0
 	for _, e := range m.entries {
-		if e.bookmarked || e.Level == "checkpoint" {
+		if e.bookmarked || e.Level == "checkpoint" || (e.Level == "paged" && m.pages[e.page].bookmark(1) != nil) {
 			n++
 		}
 	}

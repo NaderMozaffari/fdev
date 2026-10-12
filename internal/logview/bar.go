@@ -148,7 +148,7 @@ func (m *Model) barItems() []barItem {
 		actions.items = append(actions.items, barItem{name: "wipe", text: m.chip("wipe", "⌫ clear", false, nil)})
 	}
 	actions.items = append(actions.items,
-		barItem{name: "save", text: m.chip("save", "⤓ save", m.raw != nil, th.Red)},
+		barItem{name: "save", text: m.chip("save", "⤓ save", m.recording(), th.Red)},
 		barItem{name: "full", text: m.chip("full", "⤢ full", false, nil)},
 		barItem{name: "help", text: m.chip("help", "? help", m.help.ShowAll, th.Purple)})
 	groups = append(groups, actions)

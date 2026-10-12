@@ -70,7 +70,7 @@ func (m *Model) openSave(sel []*Entry) tea.Cmd {
 			m.saveAns.What = saveMarked
 		}
 	}
-	opts = append(opts, huh.NewOption(fmt.Sprintf("the whole session (%s)", plural(len(m.entries), "log")), saveAll))
+	opts = append(opts, huh.NewOption(fmt.Sprintf("the whole session (%s)", plural(m.sessionSize(), "log")), saveAll))
 
 	m.saveForm = huh.NewForm(huh.NewGroup(
 		huh.NewInput().Title("Subject").Placeholder("what these logs show, e.g. login fails after a token refresh").
@@ -133,7 +133,7 @@ func (m *Model) saveEntries(what string) []*Entry {
 		}
 		return out
 	}
-	return m.entries
+	return m.allEntries()
 }
 
 // splitTags reads "auth, bug #login" as auth, bug, login.
@@ -241,7 +241,7 @@ func (m *Model) writeHeader(b *strings.Builder, subject string, tags []string, e
 	if len(tags) > 0 {
 		fmt.Fprintf(b, "# tags: %s\n", strings.Join(tags, ", "))
 	}
-	if len(entries) > 0 && len(entries) < len(m.entries) {
+	if len(entries) > 0 && len(entries) < m.sessionSize() {
 		fmt.Fprintf(b, "# logs: %s, %s – %s\n", plural(len(entries), "log"),
 			entries[0].Time.Format("15:04:05"), entries[len(entries)-1].Time.Format("15:04:05"))
 	}

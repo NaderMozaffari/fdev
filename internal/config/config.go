@@ -80,8 +80,9 @@ type Look struct {
 	// Group draws a line between groups of related logs: pause (a burst of
 	// logs, a pause before the next), tag (a run of one tag) or off.
 	Group string `yaml:"group" json:"group"`
-	// Checkpoint is how often the viewer marks the logs by itself, when logs
-	// came since the last mark: 1m, 5m, 10m, 30m or off.
+	// Checkpoint is how long the logs are quiet before the viewer marks them
+	// by itself, when logs came since the last mark: 10s, 30s, 1m or off.
+	// Each mark also puts the logs before it in the session's file.
 	Checkpoint string `yaml:"checkpoint" json:"checkpoint,omitempty"`
 	// Off is the key combinations turned off, for when they get hit by
 	// mistake: ctrl+c, ctrl+l, ...
@@ -109,9 +110,9 @@ const (
 	CheckpointOff = "off"
 )
 
-// CheckpointEvery is how often the viewer marks the logs by itself; 0 when
-// it doesn't.
-func (l Look) CheckpointEvery() time.Duration {
+// CheckpointQuiet is how long the logs are quiet before the viewer marks
+// them by itself; 0 when it doesn't.
+func (l Look) CheckpointQuiet() time.Duration {
 	d, err := time.ParseDuration(l.Checkpoint)
 	if err != nil {
 		return 0
@@ -133,10 +134,10 @@ func (l Look) WithDefaults() Look {
 	if l.Group != GroupTag && l.Group != GroupOff {
 		l.Group = GroupPause
 	}
-	if l.Checkpoint != CheckpointOff {
-		if d, err := time.ParseDuration(l.Checkpoint); err != nil || d < time.Minute {
-			l.Checkpoint = "5m"
-		}
+	switch l.Checkpoint {
+	case "10s", "30s", "1m", CheckpointOff:
+	default: // also the minutes of before, when it was a clock
+		l.Checkpoint = "10s"
 	}
 	if l.RTL != "fdev" && l.RTL != "terminal" {
 		l.RTL = "auto"
