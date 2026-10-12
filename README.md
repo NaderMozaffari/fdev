@@ -531,9 +531,10 @@ export FDEV_EDITOR='zed {file}:{line}:{col}'      # or put `editor:` in fdev.yam
 ## Wi-Fi debugging
 
 `fdev wifi` (or **wifi-debug** under Tools, in a project with an Android
-app) gets a phone on adb over Wi-Fi. It first connects the phones paired
-before that announce themselves. Otherwise it shows a QR code in the terminal
-for the phone's **Wireless debugging → Pair device with QR code**. Choose
+app) gets a phone on adb over Wi-Fi. It restarts the adb server first, then
+connects the phones paired before that announce themselves. Otherwise it
+shows a QR code in the terminal for the phone's **Wireless debugging → Pair
+device with QR code**. Choose
 **Pair device with pairing code** instead and fdev finds the phone and asks
 for the 6 digits; if your network hides the phone, type the IP address &
 port the dialog shows. `fdev wifi pair` goes straight to pairing.

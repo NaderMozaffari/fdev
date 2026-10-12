@@ -71,6 +71,9 @@ func (s *session) run(o Options) int {
 		return 1
 	}
 	s.adb = adb(path)
+	// Restart the adb server on every run, so a stuck one doesn't stop the
+	// phone from connecting.
+	_, _ = s.adb.run(15*time.Second, "kill-server")
 	_, _ = s.adb.run(15*time.Second, "start-server")
 	s.say(bold.Render("Wi-Fi debugging"))
 
