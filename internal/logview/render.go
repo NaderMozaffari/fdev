@@ -51,6 +51,7 @@ type row struct {
 	first bool
 	more  bool // the "… more" row: a click opens the entry in a window
 	text  string
+	fold  int // the part of some JSON this row opens, plus one (fold.go); 0 for none
 }
 
 // label is the level column, in charmbracelet/log's words and colors.
@@ -209,6 +210,9 @@ func (m *Model) entryRows(e *Entry, width int) []row {
 	for i, t := range texts {
 		more := strings.HasPrefix(t, hintMark)
 		rows[i] = row{entry: e, first: i == 0, more: more, text: strings.TrimPrefix(t, hintMark)}
+		if k, ok := e.foldAt[i]; ok {
+			rows[i].fold = k + 1
+		}
 	}
 	e.cached, e.cache = key, rows
 	return rows
@@ -351,12 +355,34 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 		out[maxHead-1] += muted.Render("…")
 	}
 	var rest []string
+	e.foldAt = map[int]int{}
+	// emit draws lines with a ▾ or ▸ at the left of the ones that open a
+	// part of some JSON (fold.go), taking the place of lead's last two cells.
+	emit := func(lines []Line, base int, lead string) {
+		for _, f := range foldLines(lines, e.folds, base) {
+			text, first := p.line(f.line), lead
+			if f.note != "" {
+				text += muted.Render(" " + f.note)
+			}
+			if f.key >= 0 {
+				glyph := "▾"
+				if f.folded {
+					glyph = "▸"
+				}
+				first = ansi.Truncate(lead, max(lipgloss.Width(lead)-2, 0), "") + p.fg(m.th.Pink).Render(glyph+" ")
+				e.foldAt[len(out)+len(rest)] = f.key
+			}
+			rest = append(rest, wrap(text, first, lead, width)...)
+		}
+	}
+	var lines []Line
 	for _, l := range e.Lines {
 		if e.Category == "network" && l.Kind == LineQuery {
 			continue // on the line, after the path; one a line with the details
 		}
-		rest = append(rest, wrap(p.line(l), indent, indent, width)...)
+		lines = append(lines, l)
 	}
+	emit(lines, 0, indent)
 	stack := e.Stack
 	if folded && len(stack) > maxStack {
 		hidden += len(stack) - maxStack
@@ -367,13 +393,7 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	}
 	if m.on["details"] || e.Expanded {
 		bar := p.fg(m.th.PinkDim).Render("┃ ")
-		details := e.Details
-		if e.Level == "request" { // a request's query is in its lines
-			details = append(queryOf(e.Lines), details...)
-		}
-		for _, l := range details {
-			rest = append(rest, wrap(p.line(l), indent+bar, indent+bar, width)...)
-		}
+		emit(e.detailLines(), detailsFold, indent+bar) // a request's query is in its lines
 	}
 	if folded && len(rest) > maxBody {
 		hidden += len(rest) - maxBody

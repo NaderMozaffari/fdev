@@ -528,6 +528,8 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			return m.pick(msg.X, msg.Y, false)
 		case msg.Button == tea.MouseLeft:
 			return m.click(msg.X, msg.Y)
+		case msg.Button == tea.MouseMiddle:
+			return m.foldClick(msg.X, msg.Y, true)
 		}
 	case tea.MouseMotionMsg:
 		m.fitHeight()
@@ -1047,6 +1049,9 @@ func (m *Model) click(x, y int) tea.Cmd {
 	if r.more {
 		m.openDialog(e)
 		return nil
+	}
+	if r.fold != 0 {
+		return m.foldClick(x, y, false)
 	}
 	if e.isRule() {
 		return nil
