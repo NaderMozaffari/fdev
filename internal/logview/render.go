@@ -135,15 +135,31 @@ func (p painter) tone(t Tone) lipgloss.Style {
 func (p painter) line(l Line) string {
 	switch l.Kind {
 	case LineJSON:
+		// The keys that say what an object is stand out, with their values,
+		// and its dates are dimmed (see keyRank).
+		next := ""
 		return jsonToken.ReplaceAllStringFunc(l.Text, func(tok string) string {
 			m := jsonToken.FindStringSubmatch(tok)
+			was := next
+			next = ""
 			switch {
 			case m[1] != "" && m[2] != "":
+				key := strings.Trim(m[1], `"`)
+				switch {
+				case importantKey(key):
+					next = "important"
+					return p.fg(p.th.Fuchsia).Bold(true).Render(m[1]) + m[2]
+				case dateKey(key):
+					next = "date"
+					return p.fg(p.th.Muted).Render(m[1]) + m[2]
+				}
 				return p.fg(p.th.Indigo).Render(m[1]) + m[2]
+			case was == "date":
+				return p.fg(p.th.Muted).Render(tok)
 			case m[1] != "":
-				return p.fg(p.th.Green).Render(m[1])
+				return p.fg(p.th.Green).Bold(was == "important").Render(m[1])
 			}
-			return p.fg(p.th.Pink).Render(m[3])
+			return p.fg(p.th.Pink).Bold(was == "important").Render(m[3])
 		})
 	case LineHeader:
 		key, value, _ := strings.Cut(l.Text, ": ")

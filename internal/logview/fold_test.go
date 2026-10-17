@@ -60,3 +60,20 @@ func allRows(m *Model) string {
 	}
 	return b.String()
 }
+
+func TestKeysThatSayWhatItIsComeFirst(t *testing.T) {
+	n, _ := parseJSON([]byte(`{"updated_at":"u","size":1,"status":"ACTIVE","deleted_at":null,"name":"x","created_at":"c","meta":{"b":1,"id":2},"id":38,"type":"T"}`))
+	got := strings.Join(prettyLines(n), "\n")
+	want := []string{`"id"`, `"name"`, `"type"`, `"status"`, `"size"`, `"meta"`, `"created_at"`, `"updated_at"`, `"deleted_at"`}
+	last := -1
+	for _, w := range want {
+		i := strings.Index(got, "  "+w+":")
+		if i < last {
+			t.Fatalf("%s is out of order:\n%s", w, got)
+		}
+		last = i
+	}
+	if i, j := strings.Index(got, `"id": 2`), strings.Index(got, `"b": 1`); i > j {
+		t.Fatalf("the object inside is not ordered too:\n%s", got)
+	}
+}

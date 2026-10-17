@@ -3,6 +3,7 @@ package logview
 import (
 	"bytes"
 	"encoding/json"
+	"sort"
 	"strings"
 )
 
@@ -75,9 +76,9 @@ func pretty(n *node, indent string) string {
 	inner := indent + "  "
 	switch {
 	case n.object && len(n.values) > 0:
-		parts := make([]string, len(n.values))
-		for i, v := range n.values {
-			parts[i] = inner + encode(n.keys[i]) + ": " + pretty(v, inner)
+		parts := make([]string, 0, len(n.values))
+		for _, i := range keyOrder(n.keys) {
+			parts = append(parts, inner+encode(n.keys[i])+": "+pretty(n.values[i], inner))
 		}
 		return "{\n" + strings.Join(parts, ",\n") + "\n" + indent + "}"
 	case n.object:
@@ -180,3 +181,47 @@ func looseLines(s string) ([]string, bool) {
 	flush()
 	return lines, len(lines) > 1
 }
+
+// A server sends keys in any order, so an object is shown with the keys
+// that say what it is first and its dates last, the others between them in
+// the order they came:
+//
+//	id  uuid  name  title  type  status  code  message  …the rest…  created_at  updated_at  deleted_at
+var (
+	firstKeys = []string{"id", "uuid", "name", "title", "type", "status", "code", "message"}
+	lastKeys  = []string{"createdat", "updatedat", "deletedat"}
+)
+
+const plainRank = 100
+
+// keyRank is where a key goes: its place among firstKeys, plainRank for the
+// others, and after them the dates (created_at, createdAt and created-at
+// are the same).
+func keyRank(key string) int {
+	k := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+	for i, f := range firstKeys {
+		if k == f {
+			return i
+		}
+	}
+	for i, l := range lastKeys {
+		if k == l {
+			return plainRank + 1 + i
+		}
+	}
+	return plainRank
+}
+
+// keyOrder is the indexes of keys in the order they are shown.
+func keyOrder(keys []string) []int {
+	order := make([]int, len(keys))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return keyRank(keys[order[a]]) < keyRank(keys[order[b]]) })
+	return order
+}
+
+// importantKey and dateKey are what render.go draws apart from the rest.
+func importantKey(key string) bool { return keyRank(key) < plainRank }
+func dateKey(key string) bool      { return keyRank(key) > plainRank }
