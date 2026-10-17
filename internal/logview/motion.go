@@ -109,6 +109,9 @@ func (m *Model) motion() tea.Cmd {
 // toggleExpanded opens or closes an entry's details, unfolding them.
 func (m *Model) toggleExpanded(e *Entry) tea.Cmd {
 	e.Expanded = !e.Expanded
+	if e.Expanded {
+		m.follow = false // it opens down from where it is, not up from the end
+	}
 	m.unfolding = &unfold{entry: e, start: time.Now(), opening: e.Expanded}
 	if e.Expanded {
 		m.lit, m.litAt = e, time.Now()

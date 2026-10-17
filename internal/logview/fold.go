@@ -71,8 +71,9 @@ func foldLines(lines []Line, folds map[int]bool, base int) []foldRow {
 			continue
 		}
 		key := base + i
+		who := identity(lines[i+1 : end])
 		if !folds[key] {
-			out = append(out, foldRow{line: l, key: key})
+			out = append(out, foldRow{line: l, key: key, note: who})
 			continue
 		}
 		closer := strings.TrimSpace(lines[end].Text)
@@ -90,10 +91,57 @@ func foldLines(lines []Line, folds map[int]bool, base int) []foldRow {
 			unit = strings.TrimSuffix(unit, "s")
 		}
 		out = append(out, foldRow{line: Line{l.Text + "…" + closer, LineJSON}, key: key, folded: true,
-			note: fmt.Sprintf("%d %s", n, unit)})
+			note: strings.TrimSpace(fmt.Sprintf("%d %s · %s", n, unit, who))})
 		i = end
 	}
 	return out
+}
+
+// identityKeys are the fields that say what an object is; their values
+// are written by its opener, folded or not.
+var identityKeys = []string{"id", "name", "title"}
+
+// identity is "id=7 name=Ann" for the object whose lines are given: those of
+// its own fields (not of the objects inside it) that are plain values.
+func identity(inner []Line) string {
+	if len(inner) == 0 {
+		return ""
+	}
+	depth := indentOf(inner[0].Text)
+	found := map[string]string{}
+	for _, l := range inner {
+		if indentOf(l.Text) != depth {
+			continue
+		}
+		key, value, ok := strings.Cut(strings.TrimSpace(l.Text), `": `)
+		if !ok || !strings.HasPrefix(key, `"`) {
+			continue
+		}
+		value = strings.TrimSuffix(value, ",")
+		if value == "" || value[0] == '{' || value[0] == '[' {
+			continue
+		}
+		for _, k := range identityKeys {
+			if strings.EqualFold(key[1:], k) && found[k] == "" {
+				found[k] = value
+			}
+		}
+	}
+	var parts []string
+	for _, k := range identityKeys {
+		if v := found[k]; v != "" {
+			parts = append(parts, k+"="+shorten(strings.Trim(v, `"`), 28))
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// shorten cuts s to n runes, with … where it was cut.
+func shorten(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n-1]) + "…"
+	}
+	return s
 }
 
 // toggleFold closes or opens the part of e's JSON that opens at key; deep
@@ -104,6 +152,9 @@ func (m *Model) toggleFold(e *Entry, key int, deep bool) {
 	}
 	now := !e.folds[key]
 	e.folds[key] = now
+	if !now {
+		m.follow = false // what opens grows down from where it is, not up from the end
+	}
 	if deep {
 		for _, g := range []struct {
 			lines []Line

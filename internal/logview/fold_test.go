@@ -27,10 +27,16 @@ func TestFoldJSON(t *testing.T) {
 		return 0
 	}
 
+	// Each object says who it is, open or closed; the ones without those
+	// fields say nothing.
+	if s := allRows(m); !strings.Contains(s, `"user": { id=7 name=Ann`) || strings.Contains(s, "sku=") {
+		t.Fatalf("no id and name by the objects:\n%s", s)
+	}
+
 	// A click closes one part: its lines go, a count stays, the rest is there.
 	m.Update(tea.MouseClickMsg{X: 20, Y: row(`"user": {`), Button: tea.MouseLeft})
 	s := allRows(m)
-	if strings.Contains(s, `"name": "Ann"`) || !strings.Contains(s, `▸`) || !strings.Contains(s, "3 keys") || !strings.Contains(s, `"sku": "x2"`) {
+	if strings.Contains(s, `"name": "Ann"`) || !strings.Contains(s, `▸`) || !strings.Contains(s, "3 keys · id=7 name=Ann") || !strings.Contains(s, `"sku": "x2"`) {
 		t.Fatalf("user not folded alone:\n%s", s)
 	}
 	// Again, and it opens.
