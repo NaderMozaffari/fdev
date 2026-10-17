@@ -401,6 +401,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `1`-`9` | info, success, warning, error, debug, network, network details, native Android logs, raw output |
 | `,` `.` `;` | show or hide the time, the level label and the tag |
 | `/` | filter: words a log must all have; `tag:Billing`, `level:error`, `url:/v1/me`, `status:4`, `method:post`, `name:getProfile`, `is:bookmarked`, `is:pinned`, `is:tracked`, `is:hidden`, `is:waiting`, `"two words"`, and `-` before a word to leave those out; `esc` clears it |
+| `ctrl+f` | find a word without hiding the other logs: `enter` jumps to the first log that has it, `n` and `N` to the next and the previous, `esc` stops |
 | `?` | all the keys |
 | `k`, **k values** | tokens and other values, the newest of each, to see and copy any time: see below |
 | `l` | layout, labels, spacing, group lines, time, saving, turned-off shortcuts |

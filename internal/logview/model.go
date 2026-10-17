@@ -93,12 +93,12 @@ type (
 )
 
 type keyMap struct {
-	Reload, Restart, Quit, Back               key.Binding
-	Scroll, Page, Ends                        key.Binding
-	Filter, Toggles, Parts, Open, Mouse, Help key.Binding
-	Look, Save, Wipe, Full, Window            key.Binding
-	Select, Marks, Values, Expand, Keep       key.Binding
-	Checkpoint                                key.Binding
+	Reload, Restart, Quit, Back                     key.Binding
+	Scroll, Page, Ends                              key.Binding
+	Filter, Find, Toggles, Parts, Open, Mouse, Help key.Binding
+	Look, Save, Wipe, Full, Window                  key.Binding
+	Select, Marks, Values, Expand, Keep             key.Binding
+	Checkpoint                                      key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -114,6 +114,7 @@ func newKeyMap() keyMap {
 		Page:       b([]string{"pgup", "pgdown"}, "pgup/pgdn", "page"),
 		Ends:       b([]string{"home", "end"}, "home/end", "top/follow"),
 		Filter:     b([]string{"/"}, "/", "filter"),
+		Find:       b([]string{"ctrl+f"}, "ctrl+f", "find a word · n N"),
 		Toggles:    b([]string{"1", "9"}, "1-9", "show/hide logs"),
 		Wipe:       b([]string{"ctrl+l"}, "ctrl+l", "clear the screen (the log stays saved)"),
 		Parts:      b([]string{",", ".", ";"}, ", . ;", "time/level/tag"),
@@ -201,7 +202,9 @@ type Model struct {
 	help      help.Model
 	spin      spinner.Model
 	input     textinput.Model
-	filtering bool
+	filtering bool         // the filter's or the find's question is open
+	finding   bool         // ...and it is the find's (find.go)
+	find      string       // the word n and N jump to, folded
 	filter    string       // folded
 	terms     []filterTerm // the filter, read (filter.go)
 
@@ -265,7 +268,7 @@ func New(o Options) (*Model, tea.Cmd) {
 	m.bar = newBar()
 	m.input = textinput.New()
 	m.input.Prompt = "Filter: "
-	m.input.Placeholder = "text, tag:Billing url:/v1/me status:4 level:error is:bookmarked -hide"
+	m.input.Placeholder = filterHint
 	m.parser.ValueKeys = o.Values
 	m.SetTheme(o.Theme)
 	m.offKeys()
@@ -688,9 +691,15 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.filtering {
 		switch msg.String() {
 		case "enter":
+			if m.finding {
+				return m.endFind(true)
+			}
 			m.filtering = false
 			m.setFilter(m.input.Value())
 		case "esc":
+			if m.finding {
+				return m.endFind(false)
+			}
 			m.filtering = false
 			m.resize()
 		default:
@@ -788,6 +797,12 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.nextBookmark(1)
 		case msg.Text == "/":
 			return m.startFilter()
+		case msg.String() == "ctrl+f":
+			return m.startFind()
+		case msg.Text == "n" && m.find != "":
+			return m.nextFound(1)
+		case msg.Text == "N" && m.find != "":
+			return m.nextFound(-1)
 		case msg.Text == "?" || msg.Text == "0":
 			m.toggleHelp()
 			return nil
@@ -803,6 +818,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return nil
 		case msg.String() == "esc" && m.filter != "":
 			m.setFilter("")
+			return nil
+		case msg.String() == "esc" && m.find != "":
+			m.find = ""
+			m.setStatus("⌕ find stopped")
 			return nil
 		}
 	}
@@ -882,8 +901,12 @@ func (m *Model) toggle(name string) {
 	m.changed()
 }
 
+const filterHint = "text, tag:Billing url:/v1/me status:4 level:error is:bookmarked -hide"
+
 func (m *Model) startFilter() tea.Cmd {
 	m.filtering = true
+	m.input.Prompt = "Filter: "
+	m.input.Placeholder = filterHint
 	m.input.SetValue(m.filter)
 	m.input.CursorEnd()
 	m.resize()
@@ -1256,12 +1279,12 @@ func (m *Model) shortHelp() []key.Binding {
 func (m *Model) fullHelp() [][]key.Binding {
 	k := m.keys
 	if m.o.Plain {
-		return [][]key.Binding{{k.Scroll, k.Page, k.Ends}, {k.Filter, k.Back}, {k.Save, k.Full}}
+		return [][]key.Binding{{k.Scroll, k.Page, k.Ends}, {k.Filter, k.Find, k.Back}, {k.Save, k.Full}}
 	}
 	return [][]key.Binding{
 		{k.Reload, k.Restart, k.Quit},
 		{k.Scroll, k.Page, k.Ends},
-		{k.Toggles, k.Parts, k.Filter},
+		{k.Toggles, k.Parts, k.Filter, k.Find},
 		{k.Select, k.Marks, k.Checkpoint, k.Values},
 		{k.Open, k.Mouse, k.Expand, k.Window},
 		{k.Look, k.Save, k.Keep, k.Wipe, k.Full},
