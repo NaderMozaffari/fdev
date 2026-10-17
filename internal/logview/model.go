@@ -607,6 +607,10 @@ func (m *Model) addLine(line string) { m.addLineAt(line, time.Now()) }
 
 func (m *Model) addLineAt(line string, now time.Time) {
 	res := m.parser.Line(line, now)
+	if res.Updated != nil {
+		m.dirty = true
+		return
+	}
 	e := res.New
 	if e == nil {
 		return

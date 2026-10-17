@@ -69,3 +69,17 @@ func TestRepeats(t *testing.T) {
 		t.Errorf("folded across a checkpoint: %+v", last)
 	}
 }
+
+func TestUpdateKey(t *testing.T) {
+	m := testModelLook(map[string]bool{}, config.Look{})
+	line := func(left, key string) string {
+		return `I/flutter (1): ⟪fd⟫{"l":"info","t":"Mission","m":"` + left + `s left","u":"` + key + `"}` + "\n"
+	}
+	m.feed([]byte(line("3", "a") + line("2", "a") + `I/flutter (1): ⟪fd⟫{"l":"info","m":"other"}` + "\n" + line("1", "a") + line("9", "b")))
+	if len(m.entries) != 3 {
+		t.Fatalf("%d rows, want 3", len(m.entries))
+	}
+	if got := m.entries[0].Text; got != "1s left" {
+		t.Errorf("first row says %q, want the last update", got)
+	}
+}

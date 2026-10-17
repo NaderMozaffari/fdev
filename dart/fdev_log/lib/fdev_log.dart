@@ -103,14 +103,14 @@ class FdevLog {
   /// Longer bodies are cut, to keep the device log from flooding.
   static int maxBodyLength = 128 * 1024;
 
-  static void debug(Object? message, {String? tag}) =>
-      log(FdevLevel.debug, message, tag: tag);
-  static void info(Object? message, {String? tag}) =>
-      log(FdevLevel.info, message, tag: tag);
-  static void success(Object? message, {String? tag}) =>
-      log(FdevLevel.success, message, tag: tag);
-  static void warning(Object? message, {String? tag}) =>
-      log(FdevLevel.warning, message, tag: tag);
+  static void debug(Object? message, {String? tag, String? update}) =>
+      log(FdevLevel.debug, message, tag: tag, update: update);
+  static void info(Object? message, {String? tag, String? update}) =>
+      log(FdevLevel.info, message, tag: tag, update: update);
+  static void success(Object? message, {String? tag, String? update}) =>
+      log(FdevLevel.success, message, tag: tag, update: update);
+  static void warning(Object? message, {String? tag, String? update}) =>
+      log(FdevLevel.warning, message, tag: tag, update: update);
   static void error(Object? message, {String? tag, StackTrace? stack}) =>
       log(FdevLevel.error, message, tag: tag, stack: stack);
   static void fatal(Object? message, {String? tag, StackTrace? stack}) =>
@@ -149,8 +149,11 @@ class FdevLog {
     FdevLevel.fatal: 'FATAL',
   };
 
+  /// With [update], a log replaces the earlier one with the same key in its
+  /// row, so a state that keeps changing (a countdown, a progress) is one
+  /// row, not one per change.
   static void log(FdevLevel level, Object? message,
-      {String? tag, StackTrace? stack}) {
+      {String? tag, StackTrace? stack, String? update}) {
     if (!_enabled) return;
     final text = _text(message);
     if (structured) {
@@ -161,6 +164,7 @@ class FdevLog {
         'm': text,
         if (stack != null) 's': '$stack',
         if (at != null) 'at': at,
+        if (update != null) 'u': update,
       });
       return;
     }

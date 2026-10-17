@@ -27,6 +27,7 @@ line: newlines in strings are escaped.
 | `m` | message | text; may have newlines; a JSON object or array, or a Dart Map or List as `toString` prints it (`{id: 7, tags: [a, b]}`), alone or after some text, is pretty-printed |
 | `s` | stack trace | optional, `StackTrace.toString()` |
 | `at` | call site | optional, `lib/<path>.dart:<line>[:<col>]` relative to the project, or an absolute path |
+| `u` | update key | optional; a log with the key of an earlier one replaces it in its row instead of adding a row, for a state that keeps changing (a countdown, a progress) |
 
 ```json
 {"l":"info","t":"Billing","m":"connected","at":"lib/billing/billing.dart:42:7"}

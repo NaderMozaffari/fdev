@@ -180,6 +180,7 @@ type Parser struct {
 	host        string
 	last        *Entry
 	pending     map[string][]*Entry // requests waiting for a response, by call
+	updatable   map[string]*Entry   // the newest log of each update key
 	calls       int                 // requests so far, to number them
 	// ValueKeys are more keys (besides tokens) whose values in network
 	// headers and bodies are kept at hand: userId, deviceId, ...
@@ -198,6 +199,9 @@ type chunk struct {
 type Result struct {
 	New   *Entry
 	Grown *Entry
+	// An earlier entry whose content was replaced by a record with the same
+	// update key (docs/PROTOCOL.md, `u`): it stays where it was.
+	Updated *Entry
 }
 
 func (p *Parser) Line(raw string, now time.Time) Result {
@@ -441,6 +445,7 @@ type record struct {
 	Error   string          `json:"error"`
 	Name    string          `json:"name"`
 	ID      string          `json:"id"` // pairs a response with its request
+	Update  string          `json:"u"`  // logs with the same key are one row, redrawn
 	Key     string          `json:"k"`  // a value to keep at hand: its name
 	Value   json.RawMessage `json:"v"`  // and the value
 }
@@ -489,7 +494,31 @@ func (p *Parser) record(payload string, raw []string, now time.Time) Result {
 		}
 	}
 	e.At, e.Raw = clean(r.At), raw
+	if r.Update != "" && r.Level != "http" && r.Level != "value" {
+		return p.update(clean(r.Update), e)
+	}
 	return p.add(e)
+}
+
+// update shows e in place of the last log with the same key, so that a
+// changing state (a countdown, a progress) is one row instead of one per
+// change. The first one with a key, or one whose row is already in the
+// session's file, is a log like any other.
+func (p *Parser) update(key string, e *Entry) Result {
+	old := p.updatable[key]
+	if old == nil || old.saved {
+		if p.updatable == nil {
+			p.updatable = map[string]*Entry{}
+		}
+		p.updatable[key] = e
+		return p.add(e)
+	}
+	p.errorGroup, p.inException = false, false
+	old.Level, old.Category, old.Tag, old.Text, old.TextTone = e.Level, e.Category, e.Tag, e.Text, e.TextTone
+	old.Fields, old.Lines, old.Stack, old.Details, old.At = e.Fields, e.Lines, e.Stack, e.Details, e.At
+	old.Raw = e.Raw
+	old.repeats, old.search, old.cached = nil, "", cacheKey{}
+	return Result{Updated: old}
 }
 
 func (p *Parser) http(r record, now time.Time) *Entry {
@@ -644,6 +673,7 @@ func (p *Parser) Abandon() {
 		}
 	}
 	p.pending = nil
+	p.updatable = nil
 }
 
 // InFlight is how many requests are waiting for their response.
