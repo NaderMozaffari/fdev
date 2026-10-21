@@ -606,14 +606,14 @@ import 'package:fdev_log/fdev_log.dart';
 
 void main() {
   FdevLog.appPackage = 'my_app';        // its frames are what ↗ links to
-  FdevLog.skip = ['core/logger/'];      // your own logging helpers, if any
-  FdevLog.info('connected', tag: 'Billing');
+  _log.info('Connected');
+  _log.error('Purchase failed', e, st); // the message becomes "Purchase failed: <e>"
   runApp(const App());
 }
 ```
 
 مپ‌ها و لیست‌ها به‌صورت JSON مرتب نشان داده می‌شوند، چه در یک رکورد چه در
-یک `print` ساده: `FdevLog.info(user)` (یک `Map`، یا مدلی با `toJson()`)، و
+یک `print` ساده: `_log.info(user)` (یک `Map`، یا مدلی با `toJson()`)، و
 حتی آنچه Dart برای یک map چاپ می‌کند،
 `print('state: $map')` → `state: {id: 7, tags: [a, b]}`، که fdev دوباره به
 JSON تبدیلش می‌کند.
@@ -647,6 +647,8 @@ class FdevDioLogger extends Interceptor {
         phase: FdevHttpPhase.request, method: options.method, url: '${options.uri}',
         headers: options.headers, body: options.data, caller: options.extra['fdev_caller'] as StackTrace?));
     handler.next(options);
+const _log = Log('Billing');            // one per file, named after what it logs
+
   }
 
   @override
@@ -655,6 +657,12 @@ class FdevDioLogger extends Interceptor {
     FdevLog.http(FdevHttp(
         phase: FdevHttpPhase.response, method: o.method, url: '${response.realUri}',
         status: response.statusCode, duration: _took(o), body: response.data,
+سطح‌ها: `debug` (جزئیات برای کسی که روی آن کد کار می‌کند)، `info` (گامی
+که دیدنش می‌ارزد)، `success` (کاری که کاربر خواسته بود تمام شد)، `warning`
+(غیرمنتظره، اما اپ دورش زد)، `error` (یک عملیات شکست خورد)، `fatal` (یک
+باگ). با `FdevLog.levels` می‌توان سطح‌ها را هنگام بیلد خاموش کرد؛
+[README پکیج](dart/fdev_log) را ببینید.
+
         caller: o.extra['fdev_caller'] as StackTrace?));
     handler.next(response);
   }

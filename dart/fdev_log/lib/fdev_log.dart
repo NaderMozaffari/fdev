@@ -8,9 +8,15 @@
 /// Logs are printed in debug builds only, unless [FdevLog.inRelease] is set.
 ///
 /// ```dart
-/// FdevLog.appPackage = 'my_app';
-/// FdevLog.info('connected', tag: 'Billing');
+/// const _log = Log('Billing');            // one per file, named after what it logs
+///
+/// _log.info('Connected');
+/// _log.error('Purchase failed', e, stack);
 /// ```
+///
+/// [Log] is the short, tagged way in; [FdevLog] holds the settings
+/// ([FdevLog.appPackage], [FdevLog.levels], [FdevLog.redactKeys]...) and the
+/// static calls that [Log] forwards to.
 library;
 
 import 'dart:convert';
@@ -62,6 +68,76 @@ class FdevHttp {
   final Object? id;
 }
 
+/// A tagged logger: one `const` per file, named after what it logs.
+///
+/// ```dart
+/// const _log = Log('Billing');
+///
+/// _log.info('Connected');
+/// _log.success('Purchase verified: $orderId');
+/// _log.warning('No receipt, retrying');
+/// _log.error('Purchase failed', e, stack);
+/// _log.debug(user);                             // a Map, List or model: JSON
+/// _log.info('Uploading $p%', update: 'upload'); // one row that changes
+/// _log.value('fcmToken', token);                // fdev's values window (k)
+/// ```
+///
+/// Which level:
+/// - [debug]: details for whoever works on that code (payloads, states).
+/// - [info]: a step of a flow worth seeing in the timeline.
+/// - [success]: an operation the user asked for finished.
+/// - [warning]: something unexpected that the app works around.
+/// - [error]: an operation failed; pass the error and its stack.
+/// - [fatal]: a bug: an uncaught error, a state that must not happen.
+///
+/// Every method forwards to [FdevLog], so the output, the release switch and
+/// [FdevLog.levels] apply. The `at` link points at the code that called the
+/// method, never at this file.
+class Log {
+  const Log(this.tag);
+
+  /// What the logs are about: a feature or a class (`Billing`, `Auth`).
+  final String tag;
+
+  /// With [update], a log replaces the earlier one with the same key in
+  /// fdev's row instead of adding another (a countdown, a progress).
+  void debug(Object? message, {String? update}) =>
+      FdevLog.log(FdevLevel.debug, message, tag: tag, update: update);
+
+  void info(Object? message, {String? update}) =>
+      FdevLog.log(FdevLevel.info, message, tag: tag, update: update);
+
+  void success(Object? message, {String? update}) =>
+      FdevLog.log(FdevLevel.success, message, tag: tag, update: update);
+
+  /// With [error], the message becomes `message: error`.
+  void warning(Object? message, [Object? error]) =>
+      FdevLog.log(FdevLevel.warning, _withError(message, error), tag: tag);
+
+  /// [error] is what was caught; its stack is used when [stack] is not
+  /// given and it is an [Error].
+  void error(Object? message, [Object? error, StackTrace? stack]) =>
+      FdevLog.log(FdevLevel.error, _withError(message, error),
+          tag: tag, stack: stack ?? _stackOf(error));
+
+  void fatal(Object? message, [Object? error, StackTrace? stack]) =>
+      FdevLog.log(FdevLevel.fatal, _withError(message, error),
+          tag: tag, stack: stack ?? _stackOf(error));
+
+  /// Keeps [value] at hand in fdev's values window (`k`) under [name], the
+  /// newest of each name, to see and copy: a token, a user id.
+  void value(String name, Object? value) =>
+      FdevLog.value(name, value, tag: tag);
+
+  static Object? _withError(Object? message, Object? error) {
+    if (error == null) return message;
+    return message == null ? '$error' : '$message: $error';
+  }
+
+  static StackTrace? _stackOf(Object? error) =>
+      error is Error ? error.stackTrace : null;
+}
+
 class FdevLog {
   FdevLog._();
 
@@ -83,15 +159,48 @@ class FdevLog {
 
   /// Keys whose values are masked, compared in lower case.
   static Set<String> redactKeys = {
-    'authorization', 'proxy-authorization', 'cookie', 'set-cookie',
-    'x-api-key', 'api-key', 'apikey', 'api_key', 'x-auth-token',
-    'password', 'passwd', 'new_password', 'old_password', 'secret',
-    'client_secret', 'token', 'access_token', 'refresh_token', 'id_token',
-    'otp', 'pin', 'cvv', 'card_number', 'private_key',
+    'authorization',
+    'proxy-authorization',
+    'cookie',
+    'set-cookie',
+    'x-api-key',
+    'api-key',
+    'apikey',
+    'api_key',
+    'x-auth-token',
+    'password',
+    'passwd',
+    'new_password',
+    'old_password',
+    'secret',
+    'client_secret',
+    'token',
+    'access_token',
+    'refresh_token',
+    'id_token',
+    'otp',
+    'pin',
+    'cvv',
+    'card_number',
+    'private_key',
   };
 
   /// Log in release builds too.
   static bool inRelease = false;
+
+  /// The levels that are logged: all by default. A log of another level is
+  /// dropped, and so is a [value] when [FdevLevel.debug] is missing (and an
+  /// [http] error when [FdevLevel.error] is). Fill it from dart-defines to
+  /// turn levels off at build time:
+  ///
+  /// ```dart
+  /// FdevLog.levels = {
+  ///   if (const bool.fromEnvironment('LOG_DEBUG_ENABLED', defaultValue: true))
+  ///     FdevLevel.debug,
+  ///   ...
+  /// };
+  /// ```
+  static Set<FdevLevel> levels = {...FdevLevel.values};
 
   /// Where lines go; `print` by default.
   static void Function(String line) output = print;
@@ -125,12 +234,13 @@ class FdevLog {
   /// FdevLog.value('accessToken', auth.accessToken);
   /// ```
   static void value(String name, Object? value, {String? tag}) {
-    if (!_enabled) return;
+    if (!_enabled || !levels.contains(FdevLevel.debug)) return;
     if (structured) {
       _emit({'l': 'value', 'k': name, 'v': value, if (tag != null) 't': tag});
       return;
     }
-    output(tag == null ? 'DEBUG $name = $value' : 'DEBUG [$tag] $name = $value');
+    output(
+        tag == null ? 'DEBUG $name = $value' : 'DEBUG [$tag] $name = $value');
   }
 
   static bool get _enabled => inRelease || _debug;
@@ -154,7 +264,7 @@ class FdevLog {
   /// row, not one per change.
   static void log(FdevLevel level, Object? message,
       {String? tag, StackTrace? stack, String? update}) {
-    if (!_enabled) return;
+    if (!_enabled || !levels.contains(level)) return;
     final text = _text(message);
     if (structured) {
       final at = location(StackTrace.current, skip: skip);
@@ -175,6 +285,9 @@ class FdevLog {
 
   static void http(FdevHttp log) {
     if (!_enabled) return;
+    if (log.phase == FdevHttpPhase.error && !levels.contains(FdevLevel.error)) {
+      return;
+    }
     final url = redact ? _redactUrl(log.url) : log.url;
     final headers = log.headers == null ? null : redacted(log.headers);
     final body = log.body == null ? null : _body(redacted(log.body));
@@ -234,8 +347,8 @@ class FdevLog {
 
   static int _sequence = 0;
 
-  static final _vmFrame = RegExp(
-      r'\((package:([\w.]+)/|file://)([^)]+?\.dart):(\d+)(?::(\d+))?\)');
+  static final _vmFrame =
+      RegExp(r'\((package:([\w.]+)/|file://)([^)]+?\.dart):(\d+)(?::(\d+))?\)');
   static final _webFrame =
       RegExp(r'packages/([\w.]+)/(\S+?\.dart) (\d+)(?::(\d+))?');
 

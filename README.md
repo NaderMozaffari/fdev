@@ -578,14 +578,14 @@ import 'package:fdev_log/fdev_log.dart';
 
 void main() {
   FdevLog.appPackage = 'my_app';        // its frames are what ↗ links to
-  FdevLog.skip = ['core/logger/'];      // your own logging helpers, if any
-  FdevLog.info('connected', tag: 'Billing');
+  _log.info('Connected');
+  _log.error('Purchase failed', e, st); // the message becomes "Purchase failed: <e>"
   runApp(const App());
 }
 ```
 
 Maps and lists show as indented JSON, in a record or a plain `print`:
-`FdevLog.info(user)` (a `Map`, or a model with `toJson()`), and also what
+`_log.info(user)` (a `Map`, or a model with `toJson()`), and also what
 Dart prints for a map, `print('state: $map')` → `state: {id: 7, tags: [a,
 b]}`, which fdev reads back into JSON.
 
@@ -618,6 +618,8 @@ class FdevDioLogger extends Interceptor {
         phase: FdevHttpPhase.request, method: options.method, url: '${options.uri}',
         headers: options.headers, body: options.data, caller: options.extra['fdev_caller'] as StackTrace?));
     handler.next(options);
+const _log = Log('Billing');            // one per file, named after what it logs
+
   }
 
   @override
@@ -626,6 +628,12 @@ class FdevDioLogger extends Interceptor {
     FdevLog.http(FdevHttp(
         phase: FdevHttpPhase.response, method: o.method, url: '${response.realUri}',
         status: response.statusCode, duration: _took(o), body: response.data,
+Levels: `debug` (details for whoever works on that code), `info` (a step
+worth seeing), `success` (what the user asked for finished), `warning`
+(unexpected, worked around), `error` (an operation failed), `fatal` (a
+bug). `FdevLog.levels` switches levels off at build time; see the
+[package README](dart/fdev_log).
+
         caller: o.extra['fdev_caller'] as StackTrace?));
     handler.next(response);
   }
