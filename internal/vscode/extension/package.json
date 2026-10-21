@@ -1,0 +1,584 @@
+{
+  "name": "fdev",
+  "displayName": "fdev",
+  "description": "Show, dim or hide the log calls in your code, colour them by level, and open the fdev launcher and log viewer from the editor.",
+  "version": "0.1.0",
+  "publisher": "nadermozaffari",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NaderMozaffari/fdev"
+  },
+  "homepage": "https://github.com/NaderMozaffari/fdev",
+  "bugs": {
+    "url": "https://github.com/NaderMozaffari/fdev/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "log",
+    "logging",
+    "flutter",
+    "dart",
+    "fdev",
+    "console",
+    "hide logs",
+    "dim logs"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "The log rules of a workspace you do not trust are not used (a regular expression can hang the editor); the defaults apply instead.",
+      "restrictedConfigurations": [
+        "fdev.logs.rules",
+        "fdev.logs.declarationRules",
+        "fdev.logs.importPattern"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "fdev.open",
+        "category": "fdev",
+        "title": "Open",
+        "icon": "$(rocket)",
+        "shortTitle": "fdev"
+      },
+      {
+        "command": "fdev.logs.cycleMode",
+        "category": "fdev",
+        "title": "Logs: Cycle Mode"
+      },
+      {
+        "command": "fdev.logs.show",
+        "category": "fdev",
+        "title": "Logs: Show"
+      },
+      {
+        "command": "fdev.logs.dim",
+        "category": "fdev",
+        "title": "Logs: Dim"
+      },
+      {
+        "command": "fdev.logs.hide",
+        "category": "fdev",
+        "title": "Logs: Hide"
+      },
+      {
+        "command": "fdev.logs.chooseLevels",
+        "category": "fdev",
+        "title": "Logs: Choose Levels"
+      },
+      {
+        "command": "fdev.logs.peek",
+        "category": "fdev",
+        "title": "Logs: Reveal All Temporarily"
+      },
+      {
+        "command": "fdev.logs.resetMode",
+        "category": "fdev",
+        "title": "Logs: Use the Settings Again"
+      },
+      {
+        "command": "fdev.logs.openSettings",
+        "category": "fdev",
+        "title": "Logs: Open Settings"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "fdev.logs.cycleMode",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "fdev",
+      "properties": {
+        "fdev.logs.enabled": {
+          "type": "boolean",
+          "default": true,
+          "order": 1,
+          "description": "Master switch: when off, no log is coloured, dimmed or hidden."
+        },
+        "fdev.logs.mode": {
+          "type": "string",
+          "enum": [
+            "show",
+            "dim",
+            "hide"
+          ],
+          "default": "dim",
+          "order": 2,
+          "description": "The mode a workspace starts in. The mode you pick afterwards (status bar, Ctrl+Alt+L, the fdev: Logs commands) is kept by VS Code outside your project, so no file of yours changes; \"fdev: Logs: Use the Settings Again\" returns to this value. show: logs in their level colour. dim: the same, faded. hide: the statement is hidden and a small marker is left."
+        },
+        "fdev.logs.levels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "debug",
+              "info",
+              "success",
+              "warning",
+              "error",
+              "fatal",
+              "value",
+              "http",
+              "declaration"
+            ]
+          },
+          "uniqueItems": true,
+          "default": [
+            "debug",
+            "info",
+            "success",
+            "warning",
+            "error",
+            "fatal",
+            "value",
+            "http",
+            "declaration"
+          ],
+          "order": 3,
+          "description": "The levels dim and hide apply to; the others stay as in show. \"fdev: Logs: Choose Levels\" changes it for the workspace without touching your settings."
+        },
+        "fdev.logs.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "dart",
+            "javascript",
+            "typescript",
+            "javascriptreact",
+            "typescriptreact",
+            "python",
+            "kotlin",
+            "swift",
+            "go"
+          ],
+          "order": 4,
+          "description": "Language ids whose files are scanned for logs."
+        },
+        "fdev.logs.rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "description": "A JavaScript regular expression (source, no slashes). It must end right after the \"(\" that opens the call; the matching \")\" is found for you. A named group (?<level>...) gives the level."
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "info",
+                  "success",
+                  "warning",
+                  "error",
+                  "fatal",
+                  "value",
+                  "http",
+                  "declaration",
+                  "warn",
+                  "wtf",
+                  "log",
+                  "print",
+                  "request",
+                  "response"
+                ],
+                "description": "The level when the pattern has no (?<level>...) group, or the group captures a name fdev does not know."
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Language ids the rule applies to (for example \"dart\"). Leave it out for every language."
+              }
+            }
+          },
+          "default": [
+            {
+              "pattern": "\\b(?:_?log|_?logger|Log|Logger|FdevLog)\\.(?<level>debug|info|success|warning|warn|error|fatal|wtf|value|http|request|response|d|i|w|e|t|f|v|trace|verbose|severe|shout|fine|finer|finest|config)\\s*\\(",
+              "languages": [
+                "dart"
+              ]
+            },
+            {
+              "pattern": "(?<![\\w$.])(?<level>print|debugPrint|debugPrintStack|debugPrintThrottled)\\s*\\(",
+              "languages": [
+                "dart"
+              ]
+            },
+            {
+              "pattern": "\\bdeveloper\\.log\\s*\\(",
+              "level": "debug",
+              "languages": [
+                "dart"
+              ]
+            },
+            {
+              "pattern": "\\bconsole\\.(?<level>log|debug|info|warn|error|trace)\\s*\\(",
+              "languages": [
+                "javascript",
+                "typescript",
+                "javascriptreact",
+                "typescriptreact"
+              ]
+            },
+            {
+              "pattern": "\\b(?:logging|logger|log|_logger|_log|LOGGER|LOG)\\.(?<level>debug|info|warning|warn|error|critical|exception|fatal)\\s*\\(",
+              "languages": [
+                "python"
+              ]
+            },
+            {
+              "pattern": "(?<![\\w$.])print\\s*\\(",
+              "level": "debug",
+              "languages": [
+                "python"
+              ]
+            },
+            {
+              "pattern": "\\b(?:Log|Timber)\\.(?<level>v|d|i|w|e|wtf)\\s*\\(",
+              "languages": [
+                "kotlin"
+              ]
+            },
+            {
+              "pattern": "(?<![\\w$.])(?<level>println|print)\\s*\\(",
+              "languages": [
+                "kotlin",
+                "swift"
+              ]
+            },
+            {
+              "pattern": "\\b(?:logger|log)\\.(?<level>trace|debug|info|notice|warning|error|fault|critical)\\s*\\(",
+              "languages": [
+                "swift"
+              ]
+            },
+            {
+              "pattern": "(?<![\\w$.])(?<level>os_log|NSLog|debugPrint|dump)\\s*\\(",
+              "languages": [
+                "swift"
+              ]
+            },
+            {
+              "pattern": "\\b(?:log|slog|logger)\\.(?<level>Print|Printf|Println|Fatal|Fatalf|Fatalln|Panic|Panicf|Panicln|Debug|Info|Warn|Error)(?:Context)?\\s*\\(",
+              "languages": [
+                "go"
+              ]
+            }
+          ],
+          "order": 5,
+          "markdownDescription": "What counts as a log call. Each rule is `{ \"pattern\": regex, \"level\": optional, \"languages\": optional }`. The pattern must end right after the `(` of the call; use a named group `(?<level>debug|info|...)` to take the level from the code. Names such as `warn`, `wtf`, `print`, `request` and `Log.e`'s `e` are turned into levels. Setting this replaces the defaults: copy them first if you only want to add one."
+        },
+        "fdev.logs.includeDeclarations": {
+          "type": "boolean",
+          "default": true,
+          "order": 6,
+          "markdownDescription": "Count the declaration of a logger (`const _log = Log('Billing');`) as a log line of level `declaration`, so it is coloured, dimmed or hidden with the calls."
+        },
+        "fdev.logs.declarationRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "description": "A JavaScript regular expression (source, no slashes). It must end right after the \"(\" that opens the call; the matching \")\" is found for you. A named group (?<level>...) gives the level."
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "info",
+                  "success",
+                  "warning",
+                  "error",
+                  "fatal",
+                  "value",
+                  "http",
+                  "declaration",
+                  "warn",
+                  "wtf",
+                  "log",
+                  "print",
+                  "request",
+                  "response"
+                ],
+                "description": "The level when the pattern has no (?<level>...) group, or the group captures a name fdev does not know."
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Language ids the rule applies to (for example \"dart\"). Leave it out for every language."
+              }
+            }
+          },
+          "default": [
+            {
+              "pattern": "\\b(?:static\\s+)?(?:const|final|late\\s+final|late|var)\\s+(?:(?:Log|Logger|FdevLog)\\s+)?\\w+\\s*=\\s*(?:const\\s+|new\\s+)?(?:Log|Logger|FdevLog)(?:\\.\\w+)?\\s*\\(",
+              "languages": [
+                "dart"
+              ]
+            },
+            {
+              "pattern": "\\b(?:const|let|var)\\s+\\w*(?:[Ll]og|LOG)\\w*\\s*=\\s*(?:\\w+\\.)*(?:createLogger|getLogger|pino|debug)\\s*\\(",
+              "languages": [
+                "javascript",
+                "typescript",
+                "javascriptreact",
+                "typescriptreact"
+              ]
+            },
+            {
+              "pattern": "\\b\\w*(?:[Ll]og|LOG)\\w*\\s*=\\s*(?:logging\\.getLogger|structlog\\.get_logger|get_logger|logging\\.Logger)\\s*\\(",
+              "languages": [
+                "python"
+              ]
+            },
+            {
+              "pattern": "\\b(?:private\\s+|internal\\s+)?(?:const\\s+)?(?:val|var)\\s+\\w*(?:[Ll]og|LOG)\\w*\\s*=\\s*(?:LoggerFactory\\.getLogger|Logger\\.getLogger|KotlinLogging\\.logger)\\s*\\(",
+              "languages": [
+                "kotlin"
+              ]
+            },
+            {
+              "pattern": "\\b(?:let|var)\\s+\\w*(?:[Ll]og|LOG)\\w*\\s*=\\s*(?:Logger|OSLog)\\s*\\(",
+              "languages": [
+                "swift"
+              ]
+            },
+            {
+              "pattern": "\\b\\w*(?:[Ll]og|LOG)\\w*\\s*(?::=|=)\\s*(?:slog\\.New|log\\.New|zap\\.New\\w*|logrus\\.New)\\s*\\(",
+              "languages": [
+                "go"
+              ]
+            }
+          ],
+          "order": 7,
+          "description": "What counts as the declaration of a logger (same format as fdev.logs.rules, the level is always \"declaration\")."
+        },
+        "fdev.logs.includeImports": {
+          "type": "boolean",
+          "default": true,
+          "order": 8,
+          "description": "Count the import of a logger library as a log line of level \"declaration\"."
+        },
+        "fdev.logs.importPattern": {
+          "type": "string",
+          "default": "^[ \\t]*(?:import|export)\\b[^\\n;]*['\"][^'\"\\n]*(?:logger|fdev_log|logging|loguru|pino|winston)[^'\"\\n]*['\"][^\\n;]*;?|^[ \\t]*(?:import|from)\\s+[\\w.]*(?:logging|logger|loguru|structlog)\\b[^\\n]*|^[ \\t]*import\\s+(?:android\\.util\\.Log|timber\\.log\\.Timber|os\\.log|OSLog|Logging)\\b[^\\n]*",
+          "order": 9,
+          "markdownDescription": "A regular expression (flags `gm`) for the import lines to count: each match is one line. The default takes the imports whose URI mentions `logger`, `fdev_log`, `logging`, `loguru`, `pino` or `winston`, and Python/Kotlin/Swift imports of logging libraries."
+        },
+        "fdev.logs.colors": {
+          "type": "object",
+          "default": {
+            "debug": "#8b949e",
+            "info": "#58a6ff",
+            "success": "#3fb950",
+            "warning": "#d29922",
+            "error": "#f85149",
+            "fatal": "#ff4d94",
+            "value": "#39c5cf",
+            "http": "#bc8cff",
+            "declaration": "#768390"
+          },
+          "order": 10,
+          "additionalProperties": {
+            "type": "string"
+          },
+          "properties": {
+            "debug": {
+              "type": "string",
+              "default": "#8b949e"
+            },
+            "info": {
+              "type": "string",
+              "default": "#58a6ff"
+            },
+            "success": {
+              "type": "string",
+              "default": "#3fb950"
+            },
+            "warning": {
+              "type": "string",
+              "default": "#d29922"
+            },
+            "error": {
+              "type": "string",
+              "default": "#f85149"
+            },
+            "fatal": {
+              "type": "string",
+              "default": "#ff4d94"
+            },
+            "value": {
+              "type": "string",
+              "default": "#39c5cf"
+            },
+            "http": {
+              "type": "string",
+              "default": "#bc8cff"
+            },
+            "declaration": {
+              "type": "string",
+              "default": "#768390"
+            }
+          },
+          "markdownDescription": "The colour of each level: `debug`, `info`, `success`, `warning`, `error`, `fatal`, `value`, `http` and `declaration`. Any CSS colour: `#58a6ff`, `#58a6ff80`, `rgb(88, 166, 255)`. The defaults read on dark and light themes."
+        },
+        "fdev.logs.colorText": {
+          "type": "boolean",
+          "default": true,
+          "order": 11,
+          "description": "Draw the text of a log call in its level colour."
+        },
+        "fdev.logs.background": {
+          "type": "boolean",
+          "default": false,
+          "order": 12,
+          "description": "Draw a faint background of the level colour behind a log call."
+        },
+        "fdev.logs.backgroundAlpha": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.12,
+          "order": 13,
+          "description": "How strong the background is (0 to 1) when fdev.logs.background is on."
+        },
+        "fdev.logs.gutterIcons": {
+          "type": "boolean",
+          "default": true,
+          "order": 14,
+          "description": "Draw a small dot of the level colour in the gutter, on the first line of a log."
+        },
+        "fdev.logs.overviewRuler": {
+          "type": "boolean",
+          "default": true,
+          "order": 15,
+          "description": "Draw a mark of the level colour in the overview ruler (the strip beside the scrollbar)."
+        },
+        "fdev.logs.fontStyle": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "italic"
+          ],
+          "default": "normal",
+          "order": 16,
+          "description": "The font style of a log call."
+        },
+        "fdev.logs.opacity": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 1,
+          "default": 0.35,
+          "order": 17,
+          "description": "How visible a dimmed log is (0.05 to 1)."
+        },
+        "fdev.logs.hiddenMarker": {
+          "type": "string",
+          "enum": [
+            "dot",
+            "label",
+            "none"
+          ],
+          "default": "dot",
+          "order": 18,
+          "enumDescriptions": [
+            "A dot and the level: \"● info\".",
+            "A dot, the level and the start of the message: \"● info “Fetching profile”\".",
+            "Nothing: the line is left blank."
+          ],
+          "description": "What is drawn in place of a hidden statement. Hover over it to read the code."
+        },
+        "fdev.logs.fold": {
+          "type": "boolean",
+          "default": true,
+          "order": 19,
+          "description": "Fold a hidden statement that spans several lines (and is alone on them), so it takes one line."
+        },
+        "fdev.logs.revealOnCursor": {
+          "type": "boolean",
+          "default": true,
+          "order": 20,
+          "description": "Draw a hidden statement as dimmed while the cursor or selection is on it, so you can edit it."
+        },
+        "fdev.logs.peekSeconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120,
+          "default": 5,
+          "order": 21,
+          "description": "How long \"fdev: Logs: Reveal All Temporarily\" shows every log before going back."
+        },
+        "fdev.logs.maxFileSize": {
+          "type": "number",
+          "minimum": 1024,
+          "default": 1048576,
+          "order": 22,
+          "description": "Files larger than this many characters are left alone."
+        },
+        "fdev.logs.statusBar": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right",
+            "off"
+          ],
+          "default": "right",
+          "order": 23,
+          "description": "Where the status bar item with the log mode and the number of logs in the file is shown (click it to cycle show, dim, hide)."
+        },
+        "fdev.statusBar.launcher": {
+          "type": "boolean",
+          "default": true,
+          "order": 24,
+          "description": "Show the \"fdev\" button in the status bar that opens the launcher."
+        },
+        "fdev.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "order": 25,
+          "markdownDescription": "The fdev program (or the folder that holds it). Empty: look on the `PATH`, then in `$GOBIN`, `$GOPATH/bin` and `~/go/bin`. Install it with `go install github.com/NaderMozaffari/fdev@latest`."
+        }
+      }
+    }
+  }
+}
