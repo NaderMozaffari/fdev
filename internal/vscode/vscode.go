@@ -5,6 +5,9 @@
 // its process ("fdev") unless terminal.integrated.tabs.title has
 // ${sequence}, the title the program sets; with it, a tab whose program
 // sets none is still named after its process.
+//
+// It also ships fdev's VS Code extension (extension/, built into a .vsix
+// by VSIX) and installs it into the editors found on the machine (Install).
 package vscode
 
 import (
@@ -56,21 +59,24 @@ func ShowTitles() (string, error) {
 	return path, nil
 }
 
-// product is the folder the editor keeps its settings in, worked out from
-// what it puts in the terminal's environment.
-func product() string {
+// product is the folder the editor keeps its settings in.
+func product() string { return current().Product }
+
+// current is the editor fdev runs in, worked out from what it puts in the
+// terminal's environment. It is VS Code when nothing tells otherwise.
+func current() Editor {
 	hint := strings.ToLower(os.Getenv("__CFBundleIdentifier") + " " + os.Getenv("VSCODE_GIT_ASKPASS_NODE") + " " + os.Getenv("TERM_PROGRAM_VERSION"))
 	switch {
 	case strings.Contains(hint, "todesktop"), strings.Contains(hint, "cursor"):
-		return "Cursor"
+		return named("cursor")
 	case strings.Contains(hint, "windsurf"):
-		return "Windsurf"
+		return named("windsurf")
 	case strings.Contains(hint, "codium"):
-		return "VSCodium"
+		return named("codium")
 	case strings.Contains(hint, "insider"):
-		return "Code - Insiders"
+		return named("code-insiders")
 	}
-	return "Code"
+	return named("code")
 }
 
 // withTitle adds the setting at the top of settings.json, keeping the rest

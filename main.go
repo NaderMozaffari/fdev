@@ -9,6 +9,8 @@
 //	fdev channel [beta|stable]
 //	                        which releases fdev update installs, or a switch
 //	fdev init               write a Makefile for a project without one
+//	fdev vscode [--editor <name> | --vsix <file>]
+//	                        install fdev's VS Code extension
 //	fdev help [command]     the commands (see cli.go), or one command's options
 package main
 
@@ -78,6 +80,8 @@ func run(args []string) int {
 			return runChannel(args[1:])
 		case "init":
 			return runInit(args[1:])
+		case "vscode":
+			return runVSCode(args[1:])
 		}
 		if strings.HasPrefix(args[0], "-") {
 			return unknown("option", args[0], optionFlags(globalOptions), "fdev ")

@@ -26,6 +26,7 @@
 [کلیدها](#keys) •
 [تم‌ها](#look) •
 [وای‌فای](#wifi) •
+[VS Code](#vscode) •
 [`fdev_log`](#fdev-log)
 
 <br>
@@ -585,6 +586,48 @@ with QR code** در گوشی. اگر **Pair device with pairing code** را ان
 - **پورت بسته یا بی‌جواب**: پنجره بسته شده، صفحه قفل شده، یا وای‌فای
   دستگاه‌ها را از هم جدا نگه می‌دارد (شبکه‌های مهمان، AP isolation).
 
+<a name="vscode"></a>
+
+## افزونه‌ی VS Code
+
+لاگ‌ها کد را شلوغ می‌کنند. fdev یک افزونه‌ی VS Code دارد (در Cursor، Windsurf،
+VSCodium و VS Code Insiders هم کار می‌کند) که لاگ‌ها را در کدتان پیدا می‌کند و
+با یک کلید **به رنگ سطحشان نشان می‌دهد، کم‌رنگشان می‌کند یا پنهانشان می‌کند**.
+هیچ چیز در پروژه‌ی شما عوض نمی‌شود: فایلی ویرایش نمی‌شود و چیزی به git
+نمی‌رسد. Dart، JavaScript، TypeScript، Python، Kotlin، Swift و Go را می‌خواند، و fdev
+را هم در یک تب ادیتور باز می‌کند (`fdev: Open` یا دکمه‌ی موشک در نوار وضعیت).
+
+```sh
+fdev vscode                      # نصب در ادیتوری که fdev در آن اجرا شده (وگرنه اولین ادیتوری که پیدا کند)
+fdev vscode --editor cursor      # یا در ادیتور دلخواه: code، code-insiders، cursor، windsurf، codium
+fdev vscode --vsix ~/Downloads   # به‌جای نصب، فایل .vsix را بنویس، برای نصب دستی یا دادن به دیگران
+```
+
+یک بار پنجره‌ی ادیتور را reload کنید، بعد **`Ctrl+Alt+L`** (در مک
+`Cmd+Alt+L`) یا کلیک روی آیتم نوار وضعیت، سه حالت را یکی‌یکی رد می‌کند:
+
+| حالت | چه می‌بینید |
+|---|---|
+| **show** | هر لاگ به رنگ سطحش، با یک نقطه در حاشیه |
+| **dim** (پیش‌فرض) | همان، کم‌رنگ: خوانا است ولی جلب توجه نمی‌کند |
+| **hide** | عبارت با یک نشانه‌ی کوچک (`● info`) جایگزین می‌شود؛ موس را روی آن ببرید تا کد را بخوانید |
+
+آیتم نوار وضعیت تعداد لاگ‌های فایل را هم نشان می‌دهد. تنظیم‌ها زیر
+`fdev.logs.*` هستند (در Settings عبارت `fdev` را جستجو کنید) و پرکاربردترین‌ها:
+
+| تنظیم | کارش |
+|---|---|
+| `fdev.logs.mode` | حالتی که یک workspace با آن شروع می‌کند: `show`، `dim` یا `hide` |
+| `fdev.logs.levels` | سطح‌هایی که dim و hide روی آن‌ها اعمال می‌شود؛ بقیه در show می‌مانند |
+| `fdev.logs.colors` | رنگ هر سطح (`debug`، `info`، `success`، `warning`، `error`، `fatal`، `value`، `http`) |
+| `fdev.logs.opacity` | لاگ کم‌رنگ چقدر دیده شود |
+| `fdev.logs.rules` | لاگ‌های خودتان با regular expression: `analytics.track(` هم لاگ حساب شود |
+
+حالتی که بعداً انتخاب می‌کنید در workspace state ادیتور نگه داشته می‌شود،
+نه در `.vscode/settings.json`. README خود افزونه (در
+[`internal/vscode/extension`](internal/vscode/extension)) همه‌ی تنظیم‌ها و
+دستورها را فهرست کرده است.
+
 <a name="fdev-log"></a>
 
 ## لاگ ساختاریافته در اپ
@@ -604,6 +647,8 @@ dependencies:
 ```dart
 import 'package:fdev_log/fdev_log.dart';
 
+const _log = Log('Billing');            // one per file, named after what it logs
+
 void main() {
   FdevLog.appPackage = 'my_app';        // its frames are what ↗ links to
   _log.info('Connected');
@@ -611,6 +656,12 @@ void main() {
   runApp(const App());
 }
 ```
+
+سطح‌ها: `debug` (جزئیات برای کسی که روی آن کد کار می‌کند)، `info` (گامی
+که دیدنش می‌ارزد)، `success` (کاری که کاربر خواسته بود تمام شد)، `warning`
+(غیرمنتظره، اما اپ دورش زد)، `error` (یک عملیات شکست خورد)، `fatal` (یک
+باگ). با `FdevLog.levels` می‌توان سطح‌ها را هنگام بیلد خاموش کرد؛
+[README پکیج](dart/fdev_log) را ببینید.
 
 مپ‌ها و لیست‌ها به‌صورت JSON مرتب نشان داده می‌شوند، چه در یک رکورد چه در
 یک `print` ساده: `_log.info(user)` (یک `Map`، یا مدلی با `toJson()`)، و
@@ -647,8 +698,6 @@ class FdevDioLogger extends Interceptor {
         phase: FdevHttpPhase.request, method: options.method, url: '${options.uri}',
         headers: options.headers, body: options.data, caller: options.extra['fdev_caller'] as StackTrace?));
     handler.next(options);
-const _log = Log('Billing');            // one per file, named after what it logs
-
   }
 
   @override
@@ -657,12 +706,6 @@ const _log = Log('Billing');            // one per file, named after what it log
     FdevLog.http(FdevHttp(
         phase: FdevHttpPhase.response, method: o.method, url: '${response.realUri}',
         status: response.statusCode, duration: _took(o), body: response.data,
-سطح‌ها: `debug` (جزئیات برای کسی که روی آن کد کار می‌کند)، `info` (گامی
-که دیدنش می‌ارزد)، `success` (کاری که کاربر خواسته بود تمام شد)، `warning`
-(غیرمنتظره، اما اپ دورش زد)، `error` (یک عملیات شکست خورد)، `fatal` (یک
-باگ). با `FdevLog.levels` می‌توان سطح‌ها را هنگام بیلد خاموش کرد؛
-[README پکیج](dart/fdev_log) را ببینید.
-
         caller: o.extra['fdev_caller'] as StackTrace?));
     handler.next(response);
   }

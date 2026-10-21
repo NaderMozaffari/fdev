@@ -26,6 +26,7 @@ colored logs you can click, with every network call on one line.**
 [Keys](#keys-in-the-log-viewer) •
 [Themes](#the-look-and-saving-logs) •
 [Wi-Fi](#wi-fi-debugging) •
+[VS Code](#vs-code-extension) •
 [`fdev_log`](#structured-logs-in-your-app)
 
 <br>
@@ -559,6 +560,47 @@ fault`:
 - **a closed port or no answer**: the dialog closed, the screen locked, or
   the Wi-Fi keeps devices apart (guest networks, AP isolation).
 
+## VS Code extension
+
+Log calls clutter code. fdev ships a VS Code extension (it also works in
+Cursor, Windsurf, VSCodium and VS Code Insiders) that finds them in your
+code and **shows them in the colour of their level, dims them, or hides
+them** with one key. Nothing in your project changes: no file is edited,
+nothing reaches git. It reads Dart, JavaScript, TypeScript, Python, Kotlin,
+Swift and Go, and it also opens fdev in an editor tab (`fdev: Open`, or the
+rocket button in the status bar).
+
+```sh
+fdev vscode                      # install it, in the editor fdev runs in (else the first it finds)
+fdev vscode --editor cursor      # or in a chosen one: code, code-insiders, cursor, windsurf, codium
+fdev vscode --vsix ~/Downloads   # write the .vsix instead, to install by hand or share
+```
+
+Reload the editor's window once, then press **`Ctrl+Alt+L`** (`Cmd+Alt+L` on
+a Mac), or click the status bar item, to go through the three modes:
+
+| Mode | What you see |
+|---|---|
+| **show** | each log call in its level's colour, with a dot in the gutter |
+| **dim** (default) | the same, faded: readable, not shouting |
+| **hide** | the statement is replaced by a small marker (`● info`); hover over it to read the code |
+
+The status bar item also counts the logs in the file. The settings are
+under `fdev.logs.*` (search `fdev` in Settings), and the common ones are:
+
+| Setting | What it does |
+|---|---|
+| `fdev.logs.mode` | the mode a workspace starts in: `show`, `dim` or `hide` |
+| `fdev.logs.levels` | the levels dim and hide apply to; the rest stay in show |
+| `fdev.logs.colors` | a colour for each level (`debug`, `info`, `success`, `warning`, `error`, `fatal`, `value`, `http`) |
+| `fdev.logs.opacity` | how visible a dimmed log is |
+| `fdev.logs.rules` | your own log calls, as regular expressions: `analytics.track(` is a log too |
+
+The mode you pick afterwards is kept in the editor's workspace state, not in
+`.vscode/settings.json`. The extension's own README (in
+[`internal/vscode/extension`](internal/vscode/extension)) lists every
+setting and command.
+
 ## Structured logs in your app
 
 The viewer works with any app: it strips the logcat prefixes, colors by
@@ -576,6 +618,8 @@ dependencies:
 ```dart
 import 'package:fdev_log/fdev_log.dart';
 
+const _log = Log('Billing');            // one per file, named after what it logs
+
 void main() {
   FdevLog.appPackage = 'my_app';        // its frames are what ↗ links to
   _log.info('Connected');
@@ -583,6 +627,12 @@ void main() {
   runApp(const App());
 }
 ```
+
+Levels: `debug` (details for whoever works on that code), `info` (a step
+worth seeing), `success` (what the user asked for finished), `warning`
+(unexpected, worked around), `error` (an operation failed), `fatal` (a
+bug). `FdevLog.levels` switches levels off at build time; see the
+[package README](dart/fdev_log).
 
 Maps and lists show as indented JSON, in a record or a plain `print`:
 `_log.info(user)` (a `Map`, or a model with `toJson()`), and also what
@@ -618,8 +668,6 @@ class FdevDioLogger extends Interceptor {
         phase: FdevHttpPhase.request, method: options.method, url: '${options.uri}',
         headers: options.headers, body: options.data, caller: options.extra['fdev_caller'] as StackTrace?));
     handler.next(options);
-const _log = Log('Billing');            // one per file, named after what it logs
-
   }
 
   @override
@@ -628,12 +676,6 @@ const _log = Log('Billing');            // one per file, named after what it log
     FdevLog.http(FdevHttp(
         phase: FdevHttpPhase.response, method: o.method, url: '${response.realUri}',
         status: response.statusCode, duration: _took(o), body: response.data,
-Levels: `debug` (details for whoever works on that code), `info` (a step
-worth seeing), `success` (what the user asked for finished), `warning`
-(unexpected, worked around), `error` (an operation failed), `fatal` (a
-bug). `FdevLog.levels` switches levels off at build time; see the
-[package README](dart/fdev_log).
-
         caller: o.extra['fdev_caller'] as StackTrace?));
     handler.next(response);
   }

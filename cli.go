@@ -83,6 +83,28 @@ var commands = []command{
 		},
 		examples: []string{"fdev channel", "fdev channel stable", "fdev channel beta"},
 	},
+	{
+		name: "vscode", args: "[--editor <name> | --vsix <file>]",
+		summary: "install fdev's VS Code extension: hide, dim or colour the log lines in your code",
+		about: "The extension finds the log calls in your code (Dart, JavaScript, TypeScript,\n" +
+			"Python, Kotlin, Swift, Go) and shows them in the colour of their level, dims\n" +
+			"them, or hides them with a small marker, so logging stays in the code without\n" +
+			"cluttering it. Ctrl+Alt+L (Cmd+Alt+L on a Mac) or the status bar item cycles\n" +
+			"show, dim and hide; the levels, colours and rules are settings (search fdev).\n" +
+			"No file of your project changes. It also opens fdev in an editor tab.\n" +
+			"\n" +
+			"fdev installs it with the editor's own command line, in the editor it runs in\n" +
+			"(VS Code, Insiders, Cursor, Windsurf or VSCodium), else the first it finds.",
+		options: []option{
+			{"--editor <name>", "install in that editor: code, code-insiders, cursor, windsurf or codium"},
+			{"--vsix <file>", "write the .vsix there (a folder works too) instead of installing it, to install it by hand or share it"},
+		},
+		examples: []string{
+			"fdev vscode",
+			"fdev vscode --editor cursor",
+			"fdev vscode --vsix ~/Downloads",
+		},
+	},
 	{name: "version", summary: "print fdev's version"},
 	{name: "help", args: "[command]", summary: "these commands, or one command's options"},
 }

@@ -193,6 +193,13 @@ dart analyze
 dart test
 ```
 
+If you changed the VS Code extension (`internal/vscode/extension`):
+
+```sh
+node --test "internal/vscode/extension/test/*.test.js"   # needs Node 21 or newer
+go test ./internal/vscode                                 # the .vsix built from it
+```
+
 If you changed what the README screenshots show, re-record them (needs
 [agg](https://github.com/asciinema/agg/releases)):
 
@@ -442,7 +449,7 @@ gh release edit v1.0.0 --prerelease=false --latest      # make it stable
 
 | Path | What's in it |
 |---|---|
-| `main.go` | runs the commands (`fdev`, `logs`, `wifi`, `init`, `update`, `channel`, `version`, `help`) |
+| `main.go` | runs the commands (`fdev`, `logs`, `wifi`, `init`, `update`, `channel`, `vscode`, `version`, `help`) |
 | `cli.go` | the commands' names, options and help: `fdev help`, and the suggestions for typos |
 | `init.go` | `fdev init`, the offer to write a Makefile, and the messages when there's no project |
 | `internal/launcher` | the menu: targets, flavors, questions, progress bar |
@@ -454,6 +461,7 @@ gh release edit v1.0.0 --prerelease=false --latest      # make it stable
 | `internal/update`, `internal/version` | `fdev update` and the version and channel logic |
 | `internal/state` | what fdev remembers between runs |
 | `internal/editor`, `internal/vscode`, `internal/keys` | opening log links in an editor, VS Code integration, key bindings |
+| `internal/vscode/extension` | the VS Code extension (plain JavaScript, no build step), embedded in the binary and installed by `fdev vscode`; test it with `node --test "internal/vscode/extension/test/*.test.js"` (or `npm test` in that folder) |
 | `dart/fdev_log` | the Dart package apps log with ([format](docs/PROTOCOL.md)) |
 | `scripts/install.sh`, `scripts/install.ps1` | the install scripts |
 | `scripts/release.sh` | builds and publishes a release |

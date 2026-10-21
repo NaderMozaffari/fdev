@@ -135,6 +135,11 @@ func fromTemplate(loc Location, template string) (*exec.Cmd, bool, error) {
 	return exec.Command(bin, args...), inTerminal, nil
 }
 
+// Find is where the command line of an editor (code, code-insiders, cursor,
+// windsurf, codium, studio, idea) is: on PATH, else inside the macOS app
+// ("code" is often not on PATH there). It is "" when there is none.
+func Find(name string) string { return find(name) }
+
 // find looks a command up on PATH, then where the macOS apps keep their CLIs.
 func find(name string) string {
 	if bin, err := exec.LookPath(name); err == nil {
@@ -144,9 +149,12 @@ func find(name string) string {
 		return ""
 	}
 	bundled := map[string][]string{
-		"code":   {"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"},
-		"cursor": {"/Applications/Cursor.app/Contents/Resources/app/bin/cursor"},
-		"studio": {"/Applications/Android Studio.app/Contents/MacOS/studio"},
+		"code":          {"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"},
+		"cursor":        {"/Applications/Cursor.app/Contents/Resources/app/bin/cursor"},
+		"code-insiders": {"/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin/code-insiders"},
+		"windsurf":      {"/Applications/Windsurf.app/Contents/Resources/app/bin/windsurf"},
+		"codium":        {"/Applications/VSCodium.app/Contents/Resources/app/bin/codium"},
+		"studio":        {"/Applications/Android Studio.app/Contents/MacOS/studio"},
 		"idea": {"/Applications/IntelliJ IDEA.app/Contents/MacOS/idea",
 			"/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea"},
 	}

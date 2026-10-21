@@ -206,6 +206,13 @@ dart analyze
 dart test
 ```
 
+اگر افزونه‌ی VS Code (`internal/vscode/extension`) را تغییر داده‌اید:
+
+```sh
+node --test "internal/vscode/extension/test/*.test.js"   # به Node 21 یا جدیدتر نیاز دارد
+go test ./internal/vscode                                 # فایل .vsix که از آن ساخته می‌شود
+```
+
 اگر چیزی را تغییر داده‌اید که در عکس‌های README دیده می‌شود، دوباره
 ضبطشان کنید (به [agg](https://github.com/asciinema/agg/releases) نیاز دارد):
 
@@ -463,7 +470,7 @@ gh release edit v1.0.0 --prerelease=false --latest      # پایدار شود
 
 | مسیر | محتوا |
 |---|---|
-| `main.go` | اجرای دستورها (`fdev`، `logs`، `wifi`، `init`، `update`، `channel`، `version`، `help`) |
+| `main.go` | اجرای دستورها (`fdev`، `logs`، `wifi`، `init`، `update`، `channel`، `vscode`، `version`، `help`) |
 | `cli.go` | اسم، گزینه‌ها و راهنمای دستورها: `fdev help` و پیشنهاد برای اشتباه‌های تایپی |
 | `init.go` | `fdev init`، پیشنهاد نوشتن Makefile، و پیغام‌های وقتی پروژه‌ای نیست |
 | `internal/launcher` | منو: تارگت‌ها، فلیورها، سؤال‌ها، نوار پیشرفت |
@@ -475,6 +482,7 @@ gh release edit v1.0.0 --prerelease=false --latest      # پایدار شود
 | `internal/update`، `internal/version` | `fdev update` و منطق نسخه و کانال |
 | `internal/state` | چیزهایی که fdev بین اجراها به خاطر می‌سپارد |
 | `internal/editor`، `internal/vscode`، `internal/keys` | باز کردن لینک لاگ در ادیتور، یکپارچگی با VS Code، کلیدها |
+| `internal/vscode/extension` | افزونه‌ی VS Code (JavaScript ساده، بدون مرحله‌ی build) که داخل باینری گذاشته می‌شود و `fdev vscode` نصبش می‌کند؛ تستش: `node --test "internal/vscode/extension/test/*.test.js"` (یا `npm test` در همان پوشه) |
 | `dart/fdev_log` | پکیج Dart که اپ‌ها با آن لاگ می‌نویسند ([فرمت](docs/PROTOCOL.md)) |
 | `scripts/install.sh`، `scripts/install.ps1` | اسکریپت‌های نصب |
 | `scripts/release.sh` | ساخت و انتشار ریلیز |
