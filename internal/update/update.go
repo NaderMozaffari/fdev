@@ -297,7 +297,8 @@ func extract(data []byte, name string) ([]byte, error) {
 }
 
 // installed is the fdev to replace: the running one, or under `go run`,
-// which runs a build in a temporary folder, the fdev on the PATH.
+// which runs a build in a temporary folder, the fdev on the PATH. On a
+// machine that has none yet, it is the folder the install scripts use.
 func installed() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -305,10 +306,25 @@ func installed() (string, error) {
 	}
 	if strings.Contains(exe, string(filepath.Separator)+"go-build") {
 		if exe, err = exec.LookPath(exeName()); err != nil {
-			return "", errors.New("there is no fdev on your PATH to replace: install a release first (see the README), or build one where you want it: go build -o ~/bin/fdev .")
+			dir, err := installDir()
+			if err != nil {
+				return "", err
+			}
+			return filepath.Join(dir, exeName()), os.MkdirAll(dir, 0o755)
 		}
 	}
 	return filepath.EvalSymlinks(exe)
+}
+
+// installDir is where scripts/install.sh and install.ps1 put fdev.
+func installDir() (string, error) {
+	if runtime.GOOS == "windows" {
+		if local := os.Getenv("LOCALAPPDATA"); local != "" {
+			return filepath.Join(local, "Programs", "fdev"), nil
+		}
+	}
+	home, err := os.UserHomeDir()
+	return filepath.Join(home, ".fdev", "bin"), err
 }
 
 func exeName() string {
@@ -327,6 +343,10 @@ func replace(exe string, bin []byte) error {
 			return fmt.Errorf("can't write to %s: run it with the rights to change it (sudo), or reinstall", filepath.Dir(exe))
 		}
 		return err
+	}
+	if _, err := os.Stat(exe); err != nil {
+		// A first install: there is nothing to move aside.
+		return os.Rename(tmp, exe)
 	}
 	if runtime.GOOS == "windows" {
 		old := exe + ".old"

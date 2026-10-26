@@ -96,7 +96,10 @@ building fdev from ~/path/to/fdev...
 ```
 
 This builds the code in your clone and replaces the `fdev` on your PATH.
-It works even if the `fdev` you have installed is an older release.
+It works even if the `fdev` you have installed is an older release. On a
+machine with no fdev at all it installs one (in `~/.fdev/bin`, or
+`%LOCALAPPDATA%\Programs\fdev` on Windows) and prints the line that puts
+that folder on your PATH.
 After the first time, `fdev update --local` from your clone (or
 `fdev update --local ~/path/to/fdev` from anywhere) does the same.
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/NaderMozaffari/fdev/internal/version"
@@ -59,6 +60,9 @@ func Local(dir string, out io.Writer) error {
 			fmt.Fprintf(out, "! but `fdev` runs %s, which comes first on your PATH (see: which -a fdev)\n", version.Home(first))
 		}
 	}
+	if _, err := exec.LookPath(exeName()); err != nil {
+		fmt.Fprintf(out, "! %s is not on your PATH yet, so typing fdev won't find it. Add it:\n  %s\n", version.Home(filepath.Dir(exe)), pathHint(filepath.Dir(exe)))
+	}
 	fmt.Fprintln(out, "  fdev update goes back to the newest release, fdev update --beta to the newest beta")
 	return nil
 }
@@ -79,4 +83,12 @@ func sourceRoot(dir string) (string, error) {
 			return "", fmt.Errorf("%s isn't fdev's source: run it in your clone of fdev, or give its folder (fdev update --local ~/fdev)", version.Home(abs))
 		}
 	}
+}
+
+// pathHint is the command that puts dir on the PATH for good.
+func pathHint(dir string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf(`[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ';%s', 'User')   (then open a new terminal)`, dir)
+	}
+	return fmt.Sprintf(`echo 'export PATH="%s:$PATH"' >> ~/.zshrc   (or ~/.bashrc; then open a new terminal)`, dir)
 }
