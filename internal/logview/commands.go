@@ -226,7 +226,7 @@ func (m *Model) commandItems() []barItem {
 }
 
 func (m *Model) commandRows() int {
-	if m.lookForm != nil || m.full {
+	if m.lookForm != nil || m.full || !m.more {
 		return 0
 	}
 	rows := 0
@@ -249,7 +249,7 @@ func (m *Model) commandBar() string {
 
 // commandAt is the command bar item at a screen position.
 func (m *Model) commandAt(x, y int) string {
-	row := y - 1 - m.headerRows() - m.vp.Height() - m.toggleRows()
+	row := y - m.logTop() - m.vp.Height() - m.toggleRows()
 	for _, it := range m.commandItems() {
 		if it.name != "" && it.y == row && x >= it.x && x < it.x+it.width {
 			return it.name

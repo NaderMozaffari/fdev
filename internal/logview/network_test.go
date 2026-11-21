@@ -60,10 +60,12 @@ func TestRequestsWaitForTheirResponse(t *testing.T) {
 
 func TestExpandButtonAndAll(t *testing.T) {
 	m := testModel(map[string]bool{})
+	m.toggleHelp() // ⊞ open all is in More
 	m.feed([]byte(sample))
 	if s := screen(m); strings.Contains(s, "▸ more") || !strings.Contains(s, "⊞ open all") {
 		t.Fatalf("a ▸ more without the mouse over a log, or no ⊞ open all:\n%s", s)
 	}
+	m.toggleHelp()
 	// The mouse over a log brings its button; only the button opens it.
 	var resp *Entry
 	for _, e := range m.entries {
@@ -111,8 +113,8 @@ func TestPairsJoined(t *testing.T) {
 		`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","id":"2","method":"POST","url":"https://a.test/v1/cart","status":201}` + "\n"))
 	lines := strings.Split(screen(m), "\n")
 	for i, want := range []string{"╭── ", "│   ", "│╭─ ", "╰┼─ ", " ╰─ "} {
-		if !strings.HasPrefix(lines[1+i], want) {
-			t.Errorf("row %d is %q, want it to start with %q", i, lines[1+i], want)
+		if !strings.HasPrefix(lines[i], want) {
+			t.Errorf("row %d is %q, want it to start with %q", i, lines[i], want)
 		}
 	}
 	// A request and its response share a color, which the next call doesn't.
@@ -121,14 +123,14 @@ func TestPairsJoined(t *testing.T) {
 		t.Errorf("calls %d/%d and %d", get.call, get.Response.call, post.call)
 	}
 	content, _ := m.View()
-	tinted := strings.Split(content, "\n")[1]
+	tinted := strings.Split(content, "\n")[0]
 	if !strings.Contains(tinted, "48;") {
 		t.Errorf("the request has no tint: %q", tinted)
 	}
 	// The mouse over the response makes its request stand out more.
 	m.Update(tea.MouseMotionMsg{X: 30, Y: rowOf(t, m, get.Response)})
 	content, _ = m.View()
-	if lit := strings.Split(content, "\n")[1]; lit == tinted {
+	if lit := strings.Split(content, "\n")[0]; lit == tinted {
 		t.Error("the pair under the mouse doesn't stand out")
 	}
 	// Without its response shown, a request has no line.

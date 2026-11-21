@@ -87,7 +87,7 @@ func (m *Model) chip(name, text string, on bool, c color.Color) string {
 // to the next row whole. Compact, there is no rule, no section titles and
 // less space between sections.
 func (m *Model) barItems() []barItem {
-	if m.full {
+	if m.full || !m.more {
 		return nil
 	}
 	th := m.th
@@ -150,7 +150,7 @@ func (m *Model) barItems() []barItem {
 	actions.items = append(actions.items,
 		barItem{name: "save", text: m.chip("save", "⤓ save", m.recording(), th.Red)},
 		barItem{name: "full", text: m.chip("full", "⤢ full", false, nil)},
-		barItem{name: "help", text: m.chip("help", "? help", m.help.ShowAll, th.Purple)})
+		barItem{name: "help", text: m.chip("help", "? close", true, th.Purple)})
 	groups = append(groups, actions)
 
 	var out []barItem
@@ -216,7 +216,7 @@ func (m *Model) toggleBar() string {
 
 // barItemAt is the bar item under the mouse, if any.
 func (m *Model) barItemAt(x, y int) string {
-	bar := y - 1 - m.headerRows() - m.vp.Height()
+	bar := y - m.logTop() - m.vp.Height()
 	for _, it := range m.barItems() {
 		if it.name != "" && it.y == bar && x >= it.x && x < it.x+it.width {
 			return it.name

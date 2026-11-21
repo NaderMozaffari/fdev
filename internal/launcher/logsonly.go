@@ -42,7 +42,7 @@ func NewLogsOnly(cfg *config.Config, args []string, st *state.State) *LogsOnly {
 		}
 	}
 	m.logs, m.cmd = logview.New(logview.Options{
-		Root: cfg.Root, Title: cfg.Title, Version: cfg.AppVersion(), About: about,
+		Root: cfg.Root, Title: cfg.Title, About: about,
 		Command: strings.Join(args, " "), Shell: strings.Join(shell, " "),
 		Env: []string{"FDEV_DART_DEFINES=" + config.DartDefine}, Settings: st.Logs,
 		Editor: cfg.Editor, Theme: theme.Named(m.ui.Theme, true), Width: 80, Height: 24,

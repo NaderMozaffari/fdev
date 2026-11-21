@@ -209,7 +209,7 @@ func (m *Model) stickyView() []string {
 
 // stickyAt is the panel's row under the mouse, and whether it is on its ✕.
 func (m *Model) stickyAt(x, y int) (int, bool, bool) {
-	i := y - 1
+	i := y
 	if i < 0 || i >= m.stickyRows()-1 {
 		return 0, false, false
 	}
