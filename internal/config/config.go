@@ -180,7 +180,19 @@ func (l Look) KeyOff(key string) bool {
 type UI struct {
 	Theme string `json:"theme,omitempty"` // auto (the terminal's dark or light) or a theme's name
 	Size  string `json:"size,omitempty"`  // auto, small, medium or large
+	// Launcher is how the steps before the logs are drawn: line (the
+	// answers so far on one line), list (a rail, like npm create's
+	// questions), full (icons and a card) or auto (full when it fits).
+	Launcher string `json:"launcher,omitempty"`
 }
+
+// Launcher looks; auto is full when the window has room, line when not.
+const (
+	LauncherAuto = "auto"
+	LauncherLine = "line"
+	LauncherList = "list"
+	LauncherFull = "full"
+)
 
 // Sizes a UI can have. Auto picks one by the window: the biggest that fits.
 const (
@@ -197,6 +209,9 @@ func (u UI) WithDefaults() UI {
 	}
 	if u.Size != SizeSmall && u.Size != SizeMedium && u.Size != SizeLarge {
 		u.Size = SizeAuto
+	}
+	if u.Launcher != LauncherLine && u.Launcher != LauncherList && u.Launcher != LauncherFull {
+		u.Launcher = LauncherAuto
 	}
 	return u
 }

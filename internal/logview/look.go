@@ -226,6 +226,12 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 				huh.NewOption("Medium · two lines an item", config.SizeMedium),
 				huh.NewOption("Large · big icons, three or four lines an item", config.SizeLarge),
 			).Value(&ui.Size),
+			huh.NewSelect[string]().Title("Launcher").Options(
+				huh.NewOption("Auto · full when the window has room, one line when not", config.LauncherAuto),
+				huh.NewOption("One line · the answers so far on one line, then the choices", config.LauncherLine),
+				huh.NewOption("List · each question on a rail, like npm create", config.LauncherList),
+				huh.NewOption("Full · icons, steps and a card", config.LauncherFull),
+			).Value(&ui.Launcher),
 		).Title("Screen").Description("For every project · z is full screen: no keys or buttons"),
 		huh.NewGroup(
 			huh.NewSelect[string]().Title("Style").

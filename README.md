@@ -495,6 +495,13 @@ opens the settings. First the screen, for every project:
   the window; *Small* is one line an item, no blank lines, and compact
   bars in the viewer (no section titles, one row of the command's
   buttons), for small screens; *Medium* two lines; *Large* the big icons.
+- **Launcher**: how the questions before the logs look. *One line*
+  keeps what you picked so far on one line (`fdev  Run › Android ›
+  Which flavor?`) with the choices under it; *List* puts each question on a
+  rail, like `npm create`'s (`◇` answered, `◆` the one being asked, `●`
+  `○` the choices); *Full* is the icons, steps and card; *Auto*, the
+  default, is *Full* when the window has room (80×24) and *One line* when
+  not. One line and List also make the menu and the forms compact.
 
 Full screen (`z`, or **⤢ full** at the top of the menus and in the
 viewer's More) hides the keys, the hints and the buttons: in the viewer,
