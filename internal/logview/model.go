@@ -690,6 +690,9 @@ func (m *Model) visible(e *Entry) bool {
 	if !m.on[e.Category] {
 		return false
 	}
+	if m.look.Style == config.StyleBlocks && e.Response != nil && m.visible(e.Response) {
+		return false // its response's box says it
+	}
 	return m.matches(e, m.terms)
 }
 
@@ -787,6 +790,13 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return nil
 		case msg.Text == "e":
 			m.openLongest()
+			return nil
+		case (msg.String() == "tab" || msg.String() == "shift+tab") && m.look.Style == config.StyleTabs:
+			step := 1
+			if msg.String() == "shift+tab" {
+				step = len(logTabs) - 1
+			}
+			m.pickTab((m.tab() + step) % len(logTabs))
 			return nil
 		case msg.Text == "k":
 			m.openVault()
@@ -964,6 +974,7 @@ func (m *Model) refresh() {
 	}
 	groups := m.grouping()
 	lane, width := m.planLanes()
+	minute := "" // the dots style's last time shown
 	var chosen map[*Entry]bool
 	if sel := m.selected(); len(sel) > 0 {
 		chosen = map[*Entry]bool{}
@@ -984,6 +995,7 @@ func (m *Model) refresh() {
 		if m.unfolding != nil && m.unfolding.entry == e {
 			er = m.unfoldRows(e, width)
 		}
+		er, minute = m.dotTime(e, er, minute)
 		if m.lit == e {
 			er = m.litRows(er)
 		}
@@ -1020,9 +1032,30 @@ func (m *Model) refresh() {
 	}
 }
 
+// dotTime leaves the time out of a log's first row in the dots style when
+// the log before it came in the same minute, so the time shows once a
+// minute: 21:37 ● …, then blank, until 21:38.
+func (m *Model) dotTime(e *Entry, er []row, last string) ([]row, string) {
+	if m.look.Style != config.StyleDots || !m.on["time"] || m.on["raw"] || e.Kind == KindTool || e.isRule() || len(er) == 0 {
+		return er, last
+	}
+	minute := e.Time.Format("15:04")
+	if minute != last {
+		return er, minute
+	}
+	er = append([]row(nil), er...) // the cache keeps the time
+	er[0].text = strings.Repeat(" ", len(minute)) + ansi.TruncateLeft(er[0].text, len(minute), "")
+	return er, minute
+}
+
 func (m *Model) click(x, y int) tea.Cmd {
 	m.fitHeight()
 	m.refresh()
+	switch h := m.headerAt(x, y); {
+	case strings.HasPrefix(h, "tab:"):
+		m.pickTab(int(h[4] - '0'))
+		return nil
+	}
 	switch m.headerAt(x, y) {
 	case "more":
 		m.toggleHelp()
@@ -1050,7 +1083,11 @@ func (m *Model) click(x, y int) tea.Cmd {
 		return nil
 	}
 	e := r.entry
-	if icon := m.gutterW + m.cols().iconX(); r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
+	icon := m.gutterW + m.cols().iconX()
+	if m.boxed(e) {
+		icon += 2 // the box's side
+	}
+	if r.first && e.At != "" && !m.on["raw"] && x >= icon && x < icon+2 {
 		return m.open(e)
 	}
 	if e.Level == "paged" {
@@ -1199,6 +1236,9 @@ func (m *Model) header() string {
 	muted := lipgloss.NewStyle().Foreground(th.Muted)
 	fdev := m.fdevBadge()
 	left := fdev
+	if m.look.Style == config.StyleRail {
+		left = muted.Render("└ ") + fdev // where the rail ends
+	}
 	switch {
 	case m.toast != "" && time.Now().Before(m.toastUntil):
 		left += " " + lipgloss.NewStyle().Foreground(th.Green).Render("✓ "+m.toast)
@@ -1206,6 +1246,14 @@ func (m *Model) header() string {
 		left += " " + m.statusText()
 	case !m.exited && m.prompting():
 		left += " " + lipgloss.NewStyle().Foreground(th.Pink).Render("✎ the command is asking: your keys go to it")
+	case m.look.Style == config.StyleTabs:
+		for _, it := range m.tabItems() {
+			left += strings.Repeat(" ", max(it.x-lipgloss.Width(left), 0)) + it.text
+		}
+	case m.look.Style == config.StyleDots:
+		for _, l := range []string{"info", "warning", "error", "network"} {
+			left += " " + lipgloss.NewStyle().Foreground(m.chipColor(l)).Render("●") + muted.Render(" "+l)
+		}
 	}
 
 	var right string
@@ -1284,8 +1332,19 @@ func (m *Model) headerAt(x, y int) string {
 	if y != m.height-1 {
 		return ""
 	}
-	if x >= 0 && x < lipgloss.Width(m.fdevBadge()) {
+	fdevX := 0
+	if m.look.Style == config.StyleRail {
+		fdevX = 2
+	}
+	if x >= fdevX && x < fdevX+lipgloss.Width(m.fdevBadge()) {
 		return "fdev"
+	}
+	if m.look.Style == config.StyleTabs {
+		for _, it := range m.tabItems() {
+			if x >= it.x && x < it.x+it.width {
+				return it.name
+			}
+		}
 	}
 	w := lipgloss.Width(m.cornerChip())
 	if x0 := m.width - 1 - w; x >= x0 && x < x0+w {

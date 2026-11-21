@@ -24,6 +24,7 @@ type cols struct {
 	sepW         int
 	timeFormat   string
 	labelsBadges bool
+	mark         string // dots or rail: the level is one colored mark (levelMark)
 }
 
 const (
@@ -40,6 +41,12 @@ func (m *Model) cols() cols {
 	if look.Time == config.TimeMillis {
 		c.timeFormat = "15:04:05.000"
 	}
+	switch look.Style {
+	case config.StyleDots:
+		c.mark, c.timeFormat = config.StyleDots, "15:04" // and only once a minute (dotTimes)
+	case config.StyleRail:
+		c.mark = config.StyleRail
+	}
 	if m.on["time"] {
 		c.timeW = len(c.timeFormat)
 	}
@@ -47,6 +54,9 @@ func (m *Model) cols() cols {
 		c.labelW = labelWidth
 		if c.labelsBadges {
 			c.labelW = labelWidth + 2
+		}
+		if c.mark != "" {
+			c.labelW = 1
 		}
 	}
 	if c.aligned && m.on["tag"] {
@@ -133,11 +143,35 @@ func (m *Model) tableHeader(c cols) []string {
 // labelText draws a level label: bold colored text, or a colored badge.
 func (m *Model) labelText(c cols, level string) string {
 	name, col := label(m.th, level)
+	if c.mark != "" {
+		return lipgloss.NewStyle().Foreground(col).Render(levelMark(c.mark, name))
+	}
 	if c.labelsBadges {
 		return lipgloss.NewStyle().Bold(true).Foreground(onColor(col)).Background(col).
 			Width(c.labelW).Align(lipgloss.Center).Render(name)
 	}
 	return lipgloss.NewStyle().Bold(true).Foreground(col).Width(c.labelW).Render(name)
+}
+
+// levelMark is a level as one mark: a dot, or on the rail a shape that
+// tells the level apart without its color (◇ info, ▲ warn, ■ error).
+func levelMark(style, name string) string {
+	if style == config.StyleDots {
+		return "●"
+	}
+	switch name {
+	case "ERRO", "FATA", "FAIL":
+		return "■"
+	case "WARN":
+		return "▲"
+	case "REQU", "RESP":
+		return "↔"
+	case "DONE":
+		return "✓"
+	case "DEBU", "PRNT":
+		return "·"
+	}
+	return "◇"
 }
 
 // onColor is a readable text color on a badge of c.
@@ -194,6 +228,15 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 			).Value(&ui.Size),
 		).Title("Screen").Description("For every project · z is full screen: no keys or buttons"),
 		huh.NewGroup(
+			huh.NewSelect[string]().Title("Style").
+				Description("the log screen keeps one line at the bottom; ? opens the rest").
+				Options(
+					huh.NewOption("Status · a bar at the bottom: errors, time, ? more", config.StyleStatus),
+					huh.NewOption("Dots · a colored dot for the level, the time once a minute", config.StyleDots),
+					huh.NewOption("Rail · a line down the left, ◇ ▲ ■ ↔ for the level", config.StyleRail),
+					huh.NewOption("Blocks · each call and each error in a box", config.StyleBlocks),
+					huh.NewOption("Tabs · the bottom line is filters: All, Network, Errors …", config.StyleTabs),
+				).Value(&look.Style),
 			huh.NewSelect[string]().Title("Layout").Options(
 				huh.NewOption("Lines · compact, like charmbracelet/log", config.LayoutLines),
 				huh.NewOption("Columns · tags, URLs and statuses lined up", config.LayoutColumns),
