@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/NaderMozaffari/fdev/internal/rail"
 	"github.com/NaderMozaffari/fdev/internal/version"
 )
 
@@ -40,7 +41,8 @@ func Local(dir string, out io.Writer) error {
 	defer os.RemoveAll(tmp)
 	bin := filepath.Join(tmp, exeName())
 
-	fmt.Fprintf(out, "building fdev from %s...\n", version.Home(root))
+	rail.Start(out, "fdev update --local")
+	rail.Step(out, "Building fdev from "+version.Home(root))
 	build := exec.Command("go", "build", "-o", bin, ".")
 	build.Dir, build.Stdout, build.Stderr = root, out, out
 	if err := build.Run(); err != nil {
@@ -54,16 +56,17 @@ func Local(dir string, out io.Writer) error {
 	if err := Replace(exe, data); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "✓ installed %s at %s\n", strings.TrimSpace(string(built)), version.Home(exe))
+	rail.Step(out, "Installed "+strings.TrimSpace(string(built))+" at "+version.Home(exe))
 	if first, err := exec.LookPath(exeName()); err == nil {
 		if first, err = filepath.EvalSymlinks(first); err == nil && first != exe {
-			fmt.Fprintf(out, "! but `fdev` runs %s, which comes first on your PATH (see: which -a fdev)\n", version.Home(first))
+			rail.Warn(out, "but `fdev` runs "+version.Home(first)+", which comes first on your PATH (see: which -a fdev)")
 		}
 	}
 	if _, err := exec.LookPath(exeName()); err != nil {
-		fmt.Fprintf(out, "! %s is not on your PATH yet, so typing fdev won't find it. Add it:\n  %s\n", version.Home(filepath.Dir(exe)), pathHint(filepath.Dir(exe)))
+		rail.Warn(out, version.Home(filepath.Dir(exe))+" is not on your PATH yet, so typing fdev won't find it. Add it:")
+		rail.Note(out, pathHint(filepath.Dir(exe)))
 	}
-	fmt.Fprintln(out, "  fdev update goes back to the newest release, fdev update --beta to the newest beta")
+	rail.End(out, "fdev update goes back to the newest release, fdev update --beta to the newest beta")
 	return nil
 }
 

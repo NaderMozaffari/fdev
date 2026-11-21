@@ -22,6 +22,7 @@ import (
 
 	"github.com/NaderMozaffari/fdev/internal/config"
 	"github.com/NaderMozaffari/fdev/internal/launcher"
+	"github.com/NaderMozaffari/fdev/internal/rail"
 	"github.com/NaderMozaffari/fdev/internal/state"
 	"github.com/NaderMozaffari/fdev/internal/update"
 	fdevversion "github.com/NaderMozaffari/fdev/internal/version"
@@ -166,14 +167,14 @@ func runUpdate(args []string) int {
 			return 2
 		}
 		if err := update.Local(local, os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, "fdev update:", err)
+			rail.Fail(os.Stderr, err.Error())
 			return 1
 		}
 		return 0
 	}
 	err := update.Run(update.Options{Repo: repo, Current: appVersion(), Version: want, Beta: beta, Out: os.Stdout})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "fdev update:", err)
+		rail.Fail(os.Stderr, err.Error())
 		return 1
 	}
 	return 0
@@ -185,19 +186,26 @@ func runUpdate(args []string) int {
 func runChannel(args []string) int {
 	current := fdevversion.Channel(appVersion())
 	if len(args) == 0 {
+		out := os.Stdout
+		rail.Start(out, "fdev channel")
+		next := ""
 		switch current {
 		case "":
-			fmt.Printf("fdev %s is built from source, on no channel: fdev channel stable or beta installs a release\n", fdevversion.Short())
+			rail.Step(out, "fdev "+fdevversion.Short()+" is built from source, on no channel")
+			next = "fdev channel stable or beta installs a release"
 		case fdevversion.Beta:
-			fmt.Printf("fdev %s is a beta: fdev update installs the newest beta (or a newer stable release)\n", appVersion())
-			fmt.Println("fdev channel stable switches to stable releases")
+			rail.Step(out, "fdev "+appVersion()+" is a beta")
+			rail.Note(out, "fdev update installs the newest beta (or a newer stable release)")
+			next = "fdev channel stable switches to stable releases"
 		default:
-			fmt.Printf("fdev %s is a stable release: fdev update installs the newest stable release\n", appVersion())
-			fmt.Println("fdev channel beta switches to betas too")
+			rail.Step(out, "fdev "+appVersion()+" is a stable release")
+			rail.Note(out, "fdev update installs the newest stable release")
+			next = "fdev channel beta switches to betas too"
 		}
 		if env := os.Getenv("FDEV_CHANNEL"); env != "" {
-			fmt.Printf("FDEV_CHANNEL=%s is set, so fdev update keeps to %s whatever is installed\n", env, strings.ToLower(env))
+			rail.Warn(out, fmt.Sprintf("FDEV_CHANNEL=%s is set, so fdev update keeps to %s whatever is installed", env, strings.ToLower(env)))
 		}
+		rail.End(out, next)
 		return 0
 	}
 	if len(args) > 1 {
@@ -219,7 +227,7 @@ func runChannel(args []string) int {
 	}
 	err := update.Run(update.Options{Repo: repo, Current: appVersion(), Beta: want == fdevversion.Beta, Switch: true, Out: os.Stdout})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "fdev channel:", err)
+		rail.Fail(os.Stderr, err.Error())
 		return 1
 	}
 	if env := strings.ToLower(os.Getenv("FDEV_CHANNEL")); env != "" && env != want {

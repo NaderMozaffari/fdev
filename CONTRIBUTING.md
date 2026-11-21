@@ -90,9 +90,13 @@ go run . update --local
 ```
 
 ```
-building fdev from ~/path/to/fdev...
-✓ installed fdev dev·07c1a2b (built from source, with uncommitted changes) at ~/.fdev/bin/fdev
-  fdev update goes back to the newest release, fdev update --beta to the newest beta
+┌  fdev update --local
+│
+◇  Building fdev from ~/path/to/fdev
+│
+◇  Installed fdev dev·07c1a2b (built from source, with uncommitted changes) at ~/.fdev/bin/fdev
+│
+└  fdev update goes back to the newest release, fdev update --beta to the newest beta
 ```
 
 This builds the code in your clone and replaces the `fdev` on your PATH.

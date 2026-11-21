@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/term"
 
 	"github.com/NaderMozaffari/fdev/internal/config"
+	"github.com/NaderMozaffari/fdev/internal/rail"
 	"github.com/NaderMozaffari/fdev/internal/state"
 	fdevversion "github.com/NaderMozaffari/fdev/internal/version"
 )
@@ -62,11 +63,6 @@ func runInit(args []string) int {
 		fmt.Fprintln(os.Stderr, "fdev init:", err)
 		return 1
 	}
-	for _, f := range config.FileNames {
-		if _, err := os.Stat(filepath.Join(cfg.Root, f)); err == nil {
-			lipgloss.Println(faint.Render("  " + f + " is there too, and fdev uses it instead of the Makefile."))
-		}
-	}
 	return 0
 }
 
@@ -77,15 +73,20 @@ func writeMakefile(root string) error {
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		return err
 	}
-	lipgloss.Println(lipgloss.NewStyle().Foreground(lipgloss.Green).Render("✓ wrote "+fdevversion.Home(path)) +
-		faint.Render(fmt.Sprintf(" (%d targets)", len(targets))))
+	rail.Start(os.Stdout, "fdev init")
+	rail.Step(os.Stdout, fmt.Sprintf("Wrote %s (%d targets)", fdevversion.Home(path), len(targets)))
 	list := strings.Join(targets[:min(len(targets), 8)], " · ")
 	if len(targets) > 8 {
 		list += " · …"
 	}
-	lipgloss.Println("  " + list)
-	lipgloss.Println("\n  Make it yours, add targets and questions: " + name.Render(config.GuideURL))
-	lipgloss.Println(faint.Render("  (فارسی: " + config.GuideURLFa + ")"))
+	rail.Note(os.Stdout, list)
+	for _, f := range config.FileNames {
+		if _, err := os.Stat(filepath.Join(root, f)); err == nil {
+			rail.Warn(os.Stdout, f+" is there too, and fdev uses it instead of the Makefile")
+		}
+	}
+	rail.End(os.Stdout, "Make it yours, add targets and questions: "+name.Render(config.GuideURL))
+	lipgloss.Println(faint.Render("   (فارسی: " + config.GuideURLFa + ")"))
 	return nil
 }
 
