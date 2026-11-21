@@ -51,7 +51,7 @@ func Local(dir string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if err := replace(exe, data); err != nil {
+	if err := Replace(exe, data); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "✓ installed %s at %s\n", strings.TrimSpace(string(built)), version.Home(exe))

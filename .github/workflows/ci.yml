@@ -23,6 +23,14 @@ jobs:
       - run: go build .
       - name: Windows build
         run: GOOS=windows go vet ./... && GOOS=windows go build -o /dev/null .
+      # The installer is a module of its own, for macOS and Windows only.
+      - name: Installer
+        if: matrix.os == 'macos-latest'
+        working-directory: installer
+        run: |
+          go vet -tags desktop,production ./...
+          go test -tags desktop,production ./...
+          GOOS=windows go vet -tags desktop,production ./...
 
   dart:
     runs-on: ubuntu-latest

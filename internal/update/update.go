@@ -50,6 +50,7 @@ type release struct {
 type asset struct {
 	Name string `json:"name"`
 	URL  string `json:"url"` // the API's URL; with octet-stream it serves the file
+	Size int64  `json:"size"`
 }
 
 // Asset is the archive name for an OS and CPU, as the release script names it.
@@ -105,21 +106,7 @@ func Run(o Options) error {
 		note = ", a beta"
 	}
 	fmt.Fprintf(o.Out, "downloading fdev %s (%s%s)...\n", rel.Tag, name, note)
-	data, err := c.download(archive.URL)
-	if err != nil {
-		return err
-	}
-	if sums == nil {
-		return fmt.Errorf("release %s has no checksums.txt", rel.Tag)
-	}
-	list, err := c.download(sums.URL)
-	if err != nil {
-		return err
-	}
-	if err := verify(data, list, name); err != nil {
-		return err
-	}
-	bin, err := extract(data, name)
+	bin, _, err := c.binary(rel, *archive, sums, nil)
 	if err != nil {
 		return err
 	}
@@ -127,7 +114,7 @@ func Run(o Options) error {
 	if err != nil {
 		return err
 	}
-	if err := replace(exe, bin); err != nil {
+	if err := Replace(exe, bin); err != nil {
 		return err
 	}
 	fmt.Fprintf(o.Out, "fdev %s → %s (%s)\n", version.Short(), rel.Tag, version.Home(exe))
@@ -224,12 +211,58 @@ func (c *client) json(url string, v any) error {
 }
 
 func (c *client) download(url string) ([]byte, error) {
+	return c.downloadProgress(url, 0, nil)
+}
+
+// downloadProgress is download, telling read how many of size bytes have
+// come so far (read may be nil).
+func (c *client) downloadProgress(url string, size int64, read func(done, total int64)) ([]byte, error) {
 	resp, err := c.get(url, "application/octet-stream")
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	if read == nil {
+		return io.ReadAll(resp.Body)
+	}
+	if resp.ContentLength > 0 {
+		size = resp.ContentLength
+	}
+	var buf bytes.Buffer
+	chunk := make([]byte, 32*1024)
+	for {
+		n, err := resp.Body.Read(chunk)
+		buf.Write(chunk[:n])
+		read(int64(buf.Len()), size)
+		if err == io.EOF {
+			return buf.Bytes(), nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+// binary downloads archive, checks it against sums and takes fdev out of
+// it. It also gives the archive's sha256.
+func (c *client) binary(rel release, archive asset, sums *asset, read func(done, total int64)) ([]byte, string, error) {
+	data, err := c.downloadProgress(archive.URL, archive.Size, read)
+	if err != nil {
+		return nil, "", err
+	}
+	if sums == nil {
+		return nil, "", fmt.Errorf("release %s has no checksums.txt", rel.Tag)
+	}
+	list, err := c.download(sums.URL)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := verify(data, list, archive.Name); err != nil {
+		return nil, "", err
+	}
+	bin, err := Extract(data, archive.Name)
+	sum := sha256.Sum256(data)
+	return bin, hex.EncodeToString(sum[:]), err
 }
 
 func find(assets []asset, name string) *asset {
@@ -258,8 +291,8 @@ func verify(data, list []byte, name string) error {
 	return fmt.Errorf("checksums.txt has no %s", name)
 }
 
-// extract takes the fdev binary out of a release archive.
-func extract(data []byte, name string) ([]byte, error) {
+// Extract takes the fdev binary out of a release archive.
+func Extract(data []byte, name string) ([]byte, error) {
 	if strings.HasSuffix(name, ".zip") {
 		zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 		if err != nil {
@@ -306,7 +339,7 @@ func installed() (string, error) {
 	}
 	if strings.Contains(exe, string(filepath.Separator)+"go-build") {
 		if exe, err = exec.LookPath(exeName()); err != nil {
-			dir, err := installDir()
+			dir, err := InstallDir()
 			if err != nil {
 				return "", err
 			}
@@ -316,8 +349,8 @@ func installed() (string, error) {
 	return filepath.EvalSymlinks(exe)
 }
 
-// installDir is where scripts/install.sh and install.ps1 put fdev.
-func installDir() (string, error) {
+// InstallDir is where scripts/install.sh and install.ps1 put fdev.
+func InstallDir() (string, error) {
 	if runtime.GOOS == "windows" {
 		if local := os.Getenv("LOCALAPPDATA"); local != "" {
 			return filepath.Join(local, "Programs", "fdev"), nil
@@ -334,9 +367,9 @@ func exeName() string {
 	return "fdev"
 }
 
-// replace puts bin at exe. Windows won't overwrite a running program but
+// Replace puts bin at exe. Windows won't overwrite a running program but
 // lets it be renamed, so it moves aside first.
-func replace(exe string, bin []byte) error {
+func Replace(exe string, bin []byte) error {
 	tmp := exe + ".new"
 	if err := os.WriteFile(tmp, bin, 0o755); err != nil {
 		if errors.Is(err, os.ErrPermission) {

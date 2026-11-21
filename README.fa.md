@@ -166,6 +166,20 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Nad
 > خطای `'sh' is not recognized` یا `'irm' is not recognized` یعنی دستور
 > برای shell دیگری است: در `cmd` از خط Command Prompt بالا استفاده کنید.
 
+**یا با نصب‌کننده**، اگر کلیک را به تایپ ترجیح می‌دهید:
+[`fdev_macos.dmg`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_macos.dmg)
+یا [`fdev_windows_setup.exe`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_windows_setup.exe)
+را از [releases](https://github.com/NaderMozaffari/fdev/releases) دانلود
+کنید. خود fdev داخل نصب‌کننده است، پس بدون اینترنت نصب می‌کند. نصب‌کننده
+می‌پرسد fdev کجا نصب شود (فقط برای شما یا برای همه)، کدام نسخه‌ها را دنبال
+کند (stable، یا beta هم؛ تا نسخه‌ی stable منتشر نشود stable قابل انتخاب
+نیست)، به PATH اضافه شود یا نه، و fdev از کدام تم استفاده کند. اگر به
+اینترنت وصل باشد GitHub را بررسی می‌کند و اگر نسخه‌ی جدیدتری از آن کانال
+باشد همان را نصب می‌کند؛ پس اجرای دوباره‌اش fdev را به‌روز می‌کند، مثل
+`fdev update`. هنوز امضا نشده است:
+در مک بار اول روی *Install fdev* راست‌کلیک کنید و *Open* را بزنید؛ در
+ویندوز *More info* و بعد *Run anyway*.
+
 اسکریپت‌ها در ویندوز در `%LOCALAPPDATA%\Programs\fdev` و در بقیه‌ی
 سیستم‌ها در `~/.fdev/bin` نصب می‌کنند (با `FDEV_INSTALL_DIR` قابل تغییر
 است) و آن را به PATH اضافه می‌کنند: در ویندوز به PATH کاربر، و در بقیه

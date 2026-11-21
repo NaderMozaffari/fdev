@@ -1,4 +1,6 @@
 /fdev
 /dist/
+/installer/*.syso
 dart/**/.dart_tool/
 dart/**/pubspec.lock
+/installer/bundle/fdev_*

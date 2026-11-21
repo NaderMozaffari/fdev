@@ -41,10 +41,51 @@ beta. The release holds:
 - `checksums.txt`, the SHA-256 of each archive
 - `install.sh` and `install.ps1`, set to install from this release's
   repository
+- `fdev_macos.dmg` and `fdev_windows_setup.exe`, the installers
+  (`installer/`), added by a second job on macOS once the release exists,
+  which also adds them to `checksums.txt`
 
 Each binary is built with the version and the release repository in it, so
 `fdev version` prints the tag and `fdev update` knows where to look. The
 release notes list the commit subjects since the last tag.
+
+Each installer carries the release's archive for its OS and CPU (embedded
+from `installer/bundle/`, where `scripts/installer.sh` copies it from the
+published release), so it installs with no internet. Online, it asks
+GitHub for the newest stable release and the newest beta, and downloads
+one when it is newer than the archive it carries. The channel picked is the
+one `fdev update` keeps to, as fdev's channel is that of its version.
+
+The installers are a Wails app (Go and a webview) in a module of their own,
+`installer/`, so fdev itself doesn't depend on Wails. Their screens are
+`installer/frontend/index.html`; the download and checksum code is
+`internal/update`'s. To build them yourself (on a Mac with Xcode's command
+line tools):
+
+```sh
+scripts/installer.sh v0.2.0-beta.1             # dist/fdev_macos.dmg and dist/fdev_windows_setup.exe
+scripts/installer.sh v0.2.0-beta.1 --publish   # and add them to that release
+```
+
+They connect to GitHub only: the fonts are in `installer/frontend/fonts`,
+and `installer/build/InternetAccessPolicy.plist` tells firewalls such as
+Little Snitch which hosts the Mac app talks to and why.
+
+Signing the Mac app needs a *Developer ID Application* certificate (Apple
+Developer Program; an *Apple Development* one can't sign for others) in the
+keychain, and a notarytool profile made once:
+
+```sh
+xcrun notarytool store-credentials fdev --apple-id <you> --team-id <team>
+MACOS_SIGN_IDENTITY="Developer ID Application: <name> (<team>)" MACOS_NOTARY_PROFILE=fdev \
+  scripts/installer.sh v0.2.0-beta.1
+```
+
+Without them the app has an ad-hoc signature (Apple silicon runs nothing
+without one), so macOS asks before opening it the first time and Little
+Snitch lists it as not signed. The release workflow builds it that way, as
+it has no certificate. The Windows `.exe` isn't signed either, so
+SmartScreen warns about it.
 
 To build or publish from your own machine instead (needs `gh`, `zip`):
 
