@@ -6,9 +6,18 @@ name: Release
 # The release goes to this repository, or, with the RELEASE_REPO variable
 # set (owner/name, e.g. a public repository that holds only releases), to
 # that one, using the RELEASE_TOKEN secret: a token that can write to it.
+#
+# The Nightly workflow calls it with a tag it pushed itself, since a tag
+# pushed from a workflow doesn't start this one.
 on:
   push:
     tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        description: The version tag to build and release
+        type: string
+        required: true
 
 permissions:
   contents: write
@@ -19,13 +28,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag }}
           fetch-depth: 0 # the release notes are the commits since the last tag
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - run: go test ./...
-      - run: scripts/release.sh "$GITHUB_REF_NAME" --publish
+      - run: scripts/release.sh "$TAG" --publish
         env:
+          TAG: ${{ inputs.tag || github.ref_name }}
           RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
           GH_TOKEN: ${{ vars.RELEASE_REPO && secrets.RELEASE_TOKEN || github.token }}
 
@@ -36,11 +47,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: installer/go.mod
       - run: cd installer && go test -tags desktop,production ./...
-      - run: scripts/installer.sh "$GITHUB_REF_NAME" --publish
+      - run: scripts/installer.sh "$TAG" --publish
         env:
+          TAG: ${{ inputs.tag || github.ref_name }}
           RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
           GH_TOKEN: ${{ vars.RELEASE_REPO && secrets.RELEASE_TOKEN || github.token }}
