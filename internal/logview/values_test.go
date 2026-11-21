@@ -40,4 +40,17 @@ func TestValuesAtHand(t *testing.T) {
 	if m.vault != nil {
 		t.Error("k did not close the values")
 	}
+
+	// From More's chip, and closed again by the ✕ in its border.
+	m.toggleHelp()
+	x, y := at(t, m, "k values")
+	m.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
+	if m.vault == nil {
+		t.Fatalf("the k values chip did not open the values:\n%s", screen(m))
+	}
+	x, y = at(t, m, " ✕ ")
+	m.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
+	if m.vault != nil {
+		t.Errorf("the ✕ did not close the values:\n%s", screen(m))
+	}
 }

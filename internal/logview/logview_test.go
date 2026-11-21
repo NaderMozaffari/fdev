@@ -998,6 +998,12 @@ func TestLongEntryFoldsAndOpensInAWindow(t *testing.T) {
 	if m.dialog != nil {
 		t.Error("esc doesn't close the window")
 	}
+	m.openDialog(hints[0].entry)
+	x, y := at(t, m, " ✕ ")
+	m.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
+	if m.dialog != nil {
+		t.Error("its ✕ doesn't close the window")
+	}
 
 	m.Update(tea.KeyPressMsg{Text: "e", Code: 'e'})
 	if m.dialog == nil || m.dialog.entry.Category != "info" {
