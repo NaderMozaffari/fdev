@@ -353,6 +353,11 @@ fdev version                           # fdev v0.4.0-beta.1 (beta)
 Found a problem? Fix it with a PR into `beta` (section 6), then release the
 next beta: `v0.4.0-beta.2`.
 
+Every night the Nightly workflow tags the next beta itself when `beta` has
+new commits, as a draft release with no build. Actions -> Nightly -> Run
+workflow does the same at once, and with **build** on it also builds and
+publishes it, like the tag push above (docs/RELEASING.md).
+
 ### B. Release a stable version (merge `beta` into `main`)
 
 Once the last beta has run for a while with no problems:
