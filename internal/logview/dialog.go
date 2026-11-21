@@ -227,7 +227,7 @@ func (m *Model) dialogWheel(b tea.MouseButton) {
 
 // dialogClick closes the window on its ✕.
 func (m *Model) dialogClick(x, y int) tea.Cmd {
-	if y == 1 && x >= m.width-5 && x < m.width-1 { // row 0 is the header
+	if y == 0 && x >= m.width-5 && x < m.width-1 { // the ✕ in the top border
 		m.closeDialog()
 	}
 	return nil

@@ -101,10 +101,10 @@ func (m *Model) copyValue(i int) tea.Cmd {
 
 // vaultRows is where the value rows start in the window, from the top of
 // the screen.
-const vaultTop = 2
+const vaultTop = 1 // under the top border
 
 func (m *Model) vaultClick(x, y int) tea.Cmd {
-	if y == 1 && x >= m.width-5 && x < m.width-1 {
+	if y == 0 && x >= m.width-5 && x < m.width-1 { // the ✕ in the top border
 		m.closeVault()
 		return nil
 	}

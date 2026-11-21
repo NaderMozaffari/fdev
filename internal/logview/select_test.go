@@ -144,3 +144,18 @@ func TestCurlAndBody(t *testing.T) {
 		t.Errorf("printed map: %q", got)
 	}
 }
+
+// The pinned logs sit at the top; a click on a pin's ✕ unpins it.
+func TestPinClosedFromTheTop(t *testing.T) {
+	m := testModel(map[string]bool{})
+	m.feed([]byte(sample))
+	e := m.entries[1]
+	m.togglePin(e)
+	if s := screen(m); !strings.HasPrefix(s, "⚑") && !strings.Contains(strings.Split(s, "\n")[0], "Bazaar") {
+		t.Fatalf("the pin is not on the first row:\n%s", s)
+	}
+	m.Update(tea.MouseClickMsg{X: m.width - 2, Y: 0, Button: tea.MouseLeft})
+	if e.pinned {
+		t.Errorf("its ✕ did not unpin it:\n%s", screen(m))
+	}
+}
