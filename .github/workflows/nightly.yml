@@ -1,0 +1,78 @@
+name: Nightly
+# Every night, if anything landed on beta since the last version tag, this
+# tags the next beta (v0.4.0-beta.1 -> v0.4.0-beta.2, or v0.4.1-beta.1 after
+# the stable v0.4.0) and makes a draft release whose notes are the commit
+# subjects since that tag. A draft, because `fdev update` and the install
+# scripts must never find a release without its archives; publish it by
+# running this with "build", or delete it.
+#
+# Run by hand, it always tags. With "build" on, it then runs the Release
+# workflow on the new tag (archives, installers, a published pre-release)
+# instead of making a draft. See docs/RELEASING.md.
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+    inputs:
+      build:
+        description: Build and publish the release (off = only the tag and a draft release)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta
+          fetch-depth: 0 # the tags, and the commits since the last one
+      - id: tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+          DRAFT: ${{ !inputs.build }}
+        run: |
+          set -euo pipefail
+          prev=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          count=$(git rev-list --count --no-merges ${prev:+"$prev.."}HEAD)
+          echo "Last tag: ${prev:-none}, $count new commits"
+          if [ "$count" = 0 ] && [ "$MANUAL" != true ]; then exit 0; fi
+
+          if [[ $prev =~ ^(v[0-9]+\.[0-9]+\.[0-9]+-.*[^0-9])([0-9]+)$ ]]; then
+            tag=${BASH_REMATCH[1]}$((BASH_REMATCH[2] + 1))
+          elif [[ $prev =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            tag=v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))-beta.1
+          elif [ -z "$prev" ]; then
+            tag=v0.1.0-beta.1
+          else
+            echo "No next version after $prev; tag this one by hand" >&2
+            exit 1
+          fi
+          echo "New tag: $tag"
+
+          # The same notes as scripts/release.sh writes.
+          notes=$(git log --no-merges --pretty='- %s' ${prev:+"$prev.."}HEAD)
+          git push origin "HEAD:refs/tags/$tag"
+          if [ "$DRAFT" = true ]; then
+            gh release create "$tag" --draft --prerelease --verify-tag \
+              --title "fdev $tag (beta)" --notes "${notes:-fdev $tag}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: tag
+    if: inputs.build && needs.tag.outputs.tag != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit

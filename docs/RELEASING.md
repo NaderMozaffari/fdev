@@ -101,6 +101,23 @@ gh release edit v0.1.3 --prerelease     # a beta
 gh release edit v1.0.0 --prerelease=false --latest
 ```
 
+## Nightly betas
+
+The [Nightly workflow](../.github/workflows/nightly.yml) runs every night at
+22:00 UTC. If anything landed on `beta` since the last version tag, it pushes
+the next beta tag (`v0.4.0-beta.1` -> `v0.4.0-beta.2`, or `v0.4.1-beta.1`
+after the stable `v0.4.0`) and makes a **draft** release whose notes are the
+commit subjects since that tag. It is a draft because `fdev update` and the
+install scripts skip drafts but would stop at a release with no archives.
+
+Run it by hand (Actions -> Nightly -> Run workflow) to tag at once, even with
+no new commits. With **build** on, it then runs the Release workflow on the
+new tag, as a pushed tag would, and publishes the pre-release. A tag pushed
+from a workflow doesn't start the Release workflow by itself, so without
+**build** nothing is built.
+
+For a new minor version, or a stable one, tag by hand as above.
+
 ## Install scripts
 
 The README installs with the scripts in `main`
