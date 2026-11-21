@@ -765,7 +765,7 @@ func (m *Model) replay(s logview.Session) tea.Cmd {
 		command = s.Target
 	}
 	logs, cmd := logview.New(logview.Options{
-		Root: m.cfg.Root, Title: m.cfg.Title, Version: m.cfg.AppVersion(), About: m.about(),
+		Root: m.cfg.Root, Title: m.cfg.Title, About: m.about(),
 		Command: command, Note: s.Note, Replay: s.Path(),
 		Settings: m.state.Logs, Editor: m.cfg.Editor, Theme: m.th, Width: m.width, Height: m.height,
 		Target: s.Target, Look: m.look(), OnLook: m.saveLook, UI: m.ui, OnUI: m.logsUI, Full: m.full,
@@ -1030,7 +1030,7 @@ func (m *Model) run(j *job) tea.Cmd {
 		return m.runTool(j.target)
 	}
 	logs, cmd := logview.New(logview.Options{
-		Root: m.cfg.Root, Title: m.cfg.Title, Version: m.cfg.AppVersion(), About: m.about(),
+		Root: m.cfg.Root, Title: m.cfg.Title, About: m.about(),
 		Command: commandLine(j.target.Name, j.env), Shell: j.target.Run,
 		Env: m.environ(j), Note: j.note, Plain: !j.target.Logs,
 		Settings: m.state.Logs, Editor: m.cfg.Editor, Theme: m.th,

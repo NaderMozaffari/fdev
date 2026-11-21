@@ -395,7 +395,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
   more while the mouse is over either, so calls that overlap don't mix.
 - A request still waiting for its response **spins**, with the time so far;
   once the response comes, the request says what it got (`→ 200 142ms`),
-  and the header counts the calls in flight.
+  and the bottom line counts the calls in flight.
 - A log that comes **again and again** in a row is one line that says how
   many times and from when to when (`Billing: retrying  ×12 · 16:04:01 –
   16:04:30`); any other log in between starts a new count. Each one is
@@ -424,7 +424,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `,` `.` `;` | show or hide the time, the level label and the tag |
 | `/` | filter: words a log must all have; `tag:Billing`, `level:error`, `url:/v1/me`, `status:4`, `method:post`, `name:getProfile`, `is:bookmarked`, `is:pinned`, `is:tracked`, `is:hidden`, `is:waiting`, `"two words"`, and `-` before a word to leave those out; `esc` clears it |
 | `ctrl+f` | find a word without hiding the other logs: `enter` jumps to the first log that has it, `n` and `N` to the next and the previous, `esc` stops |
-| `?` | all the keys |
+| `?`, **? more** | More: the log toggles, the columns, the buttons for the command's keys (reload, restart, ...) and every key. Otherwise the viewer keeps a single line at the bottom (errors, how long it has run, what just happened), and the app's name, version and device are in the terminal's title. `?` or `esc` closes it |
 | `k`, **k values** | tokens and other values, the newest of each, to see and copy any time: see below |
 | `l` | layout, labels, spacing, group lines, time, saving, turned-off shortcuts |
 | `ctrl+s` | save the whole log to `.fdev/logs` |
@@ -441,7 +441,7 @@ with its time, level and tag, and `↗` opens the line of code that logged it.
 | `space`, **◆ checkpoint** | a checkpoint: a line across the logs with the time and how many logs came since the last one (`━━ ◆ checkpoint 2 · 16:04:12 · 38 logs since the last ━━`), to find your place again after looking away. fdev also puts one by itself once no log came for 10 seconds (`── ◇ 16:09:12 · 112 logs since the last ──`; the settings change it or turn it off), and after 1000 logs without one. Each checkpoint puts the logs before it in the session's file in one go, and in a long session the older ones leave memory, so the viewer stays fast: in their place is a `┄┄ ⋯ 112 logs here, in the session's file · click to load ┄┄` line, and a click on it, or `[` `]` reaching the checkpoint next to it, loads them back. They are saved with the session |
 | `[` `]` | the bookmark or checkpoint before or after |
 | `m` | mouse on/off; off (or holding ⌥/shift) lets you select text |
-| `z`, **⤢ full** | full screen: just the title and the logs; `z`, `esc` or **⤡ exit** in the corner bring the bars back |
+| `z`, **⤢ full** | full screen: just the logs and the bottom line, even with More open; `z`, `esc` or **⤡ exit** in the corner come back |
 | anything else | goes to flutter: `r` reload, `R` restart, `q` quit, ... |
 
 The digits only become toggles once flutter lists its key commands, so a
@@ -497,8 +497,8 @@ opens the settings. First the screen, for every project:
   buttons), for small screens; *Medium* two lines; *Large* the big icons.
 
 Full screen (`z`, or **⤢ full** at the top of the menus and in the
-viewer's bar) hides the keys, the hints and the buttons: in the viewer,
-only the title stays above the logs. It is off at every start.
+viewer's More) hides the keys, the hints and the buttons: in the viewer,
+only the bottom line stays under the logs. It is off at every start.
 
 Then the logs, for this project:
 

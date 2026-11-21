@@ -206,13 +206,14 @@ func screen(m *Model) string {
 
 func TestViewAndToggles(t *testing.T) {
 	m := testModel(map[string]bool{})
+	m.toggleHelp() // More: the bars
 	m.feed([]byte("Launching lib/main.dart...\r\n" +
 		`I/flutter (1): ⟪fd⟫{"l":"info","t":"Bazaar","m":"connected","at":"lib/a.dart:3"}` + "\r\n" +
 		`I/flutter (1): ⟪fd⟫{"l":"http","p":"response","method":"GET","url":"https://a.test/v1","status":200,"ms":5}` + "\r\n" +
 		"D/EGL_emulation(1): noise\r\n" +
 		"h List all available interactive commands.\r\n"))
 	s := screen(m)
-	for _, want := range []string{"INFO ↗ Bazaar: connected", "RESP   GET ← /v1 status=200 took=5ms", "8 native ·1", "fdev  App  dev", "LOGS", "SHOW", "COLUMNS", "⚙ look"} {
+	for _, want := range []string{"INFO ↗ Bazaar: connected", "RESP   GET ← /v1 status=200 took=5ms", "8 native ·1", "? close", "LOGS", "SHOW", "COLUMNS", "⚙ look"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("default view has no %q:\n%s", want, s)
 		}
@@ -493,6 +494,7 @@ func TestKeysWorkWhileBuilding(t *testing.T) {
 	if !m.on["native"] {
 		t.Error("a toggle before flutter is ready did nothing")
 	}
+	m.key(keyText("?"))
 	if s := screen(m); !strings.Contains(s, "show/hide logs") {
 		t.Errorf("help while building:\n%s", s)
 	}
@@ -530,17 +532,14 @@ func at(t *testing.T, m *Model, text string) (int, int) {
 
 func TestHeaderVersions(t *testing.T) {
 	m := testModel(map[string]bool{})
-	m.o.Version = "v2.1.39 · build 439"
 	version.Current, version.Shown = "v1.4.0", false
 	t.Cleanup(func() { version.Current, version.Shown = "dev", false })
-	if s := screen(m); !strings.Contains(s, "fdev  App  v2.1.39 · build 439  dev") {
-		t.Errorf("no app version in the header:\n%s", s)
-	}
-	m.Update(tea.MouseClickMsg{X: 1, Y: 0, Button: tea.MouseLeft})
-	if s := screen(m); !strings.Contains(s, "fdev v1.4.0  App  v2.1.39") {
+	bottom := m.height - 1 // the app's version is in the terminal's title; fdev's at the bottom
+	m.Update(tea.MouseClickMsg{X: 1, Y: bottom, Button: tea.MouseLeft})
+	if s := screen(m); !strings.Contains(s, "fdev v1.4.0") {
 		t.Errorf("clicking fdev did not show its version:\n%s", s)
 	}
-	m.Update(tea.MouseClickMsg{X: 1, Y: 0, Button: tea.MouseLeft})
+	m.Update(tea.MouseClickMsg{X: 1, Y: bottom, Button: tea.MouseLeft})
 	if s := screen(m); strings.Contains(s, "v1.4.0") {
 		t.Errorf("clicking fdev again did not hide its version:\n%s", s)
 	}
@@ -550,6 +549,7 @@ func TestBarWithTheMouse(t *testing.T) {
 	m := testModel(map[string]bool{})
 	m.width = 180 // the whole bar on one row
 	m.resize()
+	m.toggleHelp()
 	m.feed([]byte(sample + "D/EGL(1): x\n"))
 
 	x, y := at(t, m, "8 native")
@@ -575,10 +575,15 @@ func TestBarWithTheMouse(t *testing.T) {
 		t.Error("the second click did not turn them back on")
 	}
 
-	x, y = at(t, m, "? help")
+	x, y = at(t, m, "? close")
 	m.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
-	if !m.help.ShowAll {
-		t.Error("the help chip did not open the help")
+	if m.more {
+		t.Error("the close chip did not close More")
+	}
+	x, y = at(t, m, "? more")
+	m.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
+	if !m.more || !strings.Contains(screen(m), "LOGS") {
+		t.Errorf("the bottom line's chip did not open More:\n%s", screen(m))
 	}
 	t.Log("\n" + screen(m))
 }
@@ -620,6 +625,7 @@ func TestCommandBar(t *testing.T) {
 	// Before flutter lists its keys, and for builds: just stop.
 	m := testModel(nil)
 	m.width = 160
+	m.toggleHelp()
 	if s := ansi.Strip(m.commandBar()); !strings.Contains(s, "ctrl+c  Stop") || strings.Contains(s, "Reload") {
 		t.Errorf("before the keys:\n%s", s)
 	}
@@ -780,6 +786,7 @@ func TestClearKeepsTheLog(t *testing.T) {
 // in and out, and esc comes out.
 func TestFullScreen(t *testing.T) {
 	m := testModel(map[string]bool{})
+	m.toggleHelp() // More open: full screen hides it too
 	m.feed([]byte(sample + "h List all available interactive commands.\n"))
 	logs := m.logHeight()
 
@@ -797,8 +804,8 @@ func TestFullScreen(t *testing.T) {
 			t.Errorf("full screen shows %q:\n%s", gone, s)
 		}
 	}
-	if !strings.Contains(s, "fdev  App  dev") || !strings.Contains(s, "Bazaar: connected") {
-		t.Errorf("full screen lost the title or the logs:\n%s", s)
+	if !strings.Contains(s, "fdev") || !strings.Contains(s, "Bazaar: connected") {
+		t.Errorf("full screen lost the bottom line or the logs:\n%s", s)
 	}
 	if m.logHeight() != m.height-1 || m.logHeight() <= logs {
 		t.Errorf("logs get %d rows of %d (were %d)", m.logHeight(), m.height, logs)
@@ -829,6 +836,7 @@ func TestFullScreen(t *testing.T) {
 // buttons take one row.
 func TestCompactBars(t *testing.T) {
 	m := testModel(map[string]bool{})
+	m.toggleHelp()
 	m.feed([]byte(sample + "Flutter run key commands.\n"))
 	big := m.toggleRows() + m.commandRows()
 	m.ui.Size = config.SizeSmall

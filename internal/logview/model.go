@@ -35,10 +35,9 @@ const maxEntries = 20000
 
 type Options struct {
 	Root    string
-	Title   string // the project, for the header
-	Version string // the app's, for the header: v2.1.39 · build 439
+	Title   string // the project, for saved sessions
 	About   About  // the app, for the settings
-	Command string // what the header shows
+	Command string // the target, for saved sessions
 	Shell   string // what runs, by `sh -c`
 	Env     []string
 	Note    string // e.g. the device name
@@ -149,6 +148,7 @@ type Model struct {
 	savedUI  config.UI // what the form goes back to when cancelled
 	ui       config.UI // the theme (drawn with th) and size shown
 	full     bool      // full screen: the header and the logs, no bars or help
+	more     bool      // ? opened the bars and the keys over the bottom line
 
 	hover      string // the bar item under the mouse
 	hoverEntry *Entry // the log under the mouse, which shows its ▸ more (expand.go)
@@ -380,14 +380,14 @@ func (m *Model) compact() bool {
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 
-// The screen: the header, the logs, the toggle bar (one or two rows) and
-// the help (one row, or the full help).
+// The screen: the logs and, at the bottom, one line (header()). ? opens
+// More over that line: the toggle bar, the command bar and every key.
 func (m *Model) logHeight() int {
 	return max(m.height-1-m.stickyRows()-m.headerRows()-m.toggleRows()-m.commandRows()-m.helpRows(), 1)
 }
 
 // logTop is the screen row the logs start on.
-func (m *Model) logTop() int { return 1 + m.stickyRows() + m.headerRows() }
+func (m *Model) logTop() int { return m.stickyRows() + m.headerRows() }
 
 // headerRows is the table's column titles, when it shows.
 func (m *Model) headerRows() int {
@@ -399,12 +399,12 @@ func (m *Model) headerRows() int {
 
 func (m *Model) helpRows() int {
 	switch {
-	case m.help.ShowAll && !m.filtering:
+	case m.filtering:
+		return 1
+	case m.more && !m.full:
 		return lipgloss.Height(m.help.FullHelpView(m.fullHelp()))
-	case m.full && !m.filtering:
-		return 0
 	}
-	return 1
+	return 0
 }
 
 func (m *Model) resizePty() {
@@ -829,6 +829,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.find = ""
 			m.setStatus("⌕ find stopped")
 			return nil
+		case msg.String() == "esc" && m.more:
+			m.toggleHelp()
+			return nil
 		}
 	}
 
@@ -889,14 +892,18 @@ func (m *Model) saveNow() {
 	}
 }
 
+// toggleHelp opens or closes More: the bars and every key, which the
+// bottom line leaves out.
 func (m *Model) toggleHelp() {
-	m.help.ShowAll = !m.help.ShowAll
+	m.more = !m.more
+	m.help.ShowAll = m.more
 	desc := "more"
-	if m.help.ShowAll {
-		desc = "close help"
+	if m.more {
+		desc = "close"
 	}
 	m.keys.Help.SetHelp("?", desc)
 	m.resize()
+	m.resizePty()
 }
 
 func (m *Model) toggle(name string) {
@@ -1017,6 +1024,9 @@ func (m *Model) click(x, y int) tea.Cmd {
 	m.fitHeight()
 	m.refresh()
 	switch m.headerAt(x, y) {
+	case "more":
+		m.toggleHelp()
+		return nil
 	case "full":
 		m.setFull(!m.full)
 		return nil
@@ -1129,7 +1139,7 @@ func relative(root, path string) string {
 func (m *Model) View() (string, tea.MouseMode) {
 	m.fitHeight()
 	m.refresh()
-	parts := []string{m.header()}
+	var parts []string
 	if m.stickyRows() > 0 {
 		parts = append(parts, m.stickyView()...)
 	}
@@ -1166,6 +1176,7 @@ func (m *Model) View() (string, tea.MouseMode) {
 	if m.helpRows() > 0 {
 		parts = append(parts, m.footer())
 	}
+	parts = append(parts, m.header())
 	out := strings.Join(parts, "\n")
 	if m.rtl() {
 		out = visualLines(out)
@@ -1178,24 +1189,23 @@ func (m *Model) View() (string, tea.MouseMode) {
 	return out, mode
 }
 
+// header is the bottom line: fdev's name or what just happened on the
+// left, and how the command is doing on the right. The app's name, version
+// and device are in the terminal's title (launcher/title.go), not here.
+//
+//	fdev  ✓ copied                       1 error • ⣾ running 21s  ? more
 func (m *Model) header() string {
 	th := m.th
 	muted := lipgloss.NewStyle().Foreground(th.Muted)
 	fdev := m.fdevBadge()
-	left := fdev + th.Badge(th.Cream, th.Purple).Render(m.o.Title)
-	if m.o.Version != "" {
-		left += th.Badge(th.Pink, th.BarBg).Render(m.o.Version)
-	}
-	left += " " + m.o.Command
-	if m.o.Note != "" {
-		left += muted.Render(" • " + m.o.Note)
-	}
-	if m.toast != "" && time.Now().Before(m.toastUntil) {
-		left = fdev + " " + lipgloss.NewStyle().Foreground(th.Green).Render("✓ "+m.toast)
-	}
-	// In full screen there is no footer: what it would say goes here.
-	if m.full && m.status != "" && time.Now().Before(m.statusUntil) {
-		left = fdev + " " + m.statusText()
+	left := fdev
+	switch {
+	case m.toast != "" && time.Now().Before(m.toastUntil):
+		left += " " + lipgloss.NewStyle().Foreground(th.Green).Render("✓ "+m.toast)
+	case m.status != "" && time.Now().Before(m.statusUntil):
+		left += " " + m.statusText()
+	case !m.exited && m.prompting():
+		left += " " + lipgloss.NewStyle().Foreground(th.Pink).Render("✎ the command is asking: your keys go to it")
 	}
 
 	var right string
@@ -1218,19 +1228,35 @@ func (m *Model) header() string {
 	if n := m.parser.InFlight(); n > 0 && !m.exited {
 		right = lipgloss.NewStyle().Foreground(th.Indigo).Render(fmt.Sprintf("%s %d waiting", spinFrame(), n)) + muted.Render(" • ") + right
 	}
-	if m.full {
-		if m.filter != "" {
-			right = lipgloss.NewStyle().Foreground(th.Pink).Render("/ "+ansi.Truncate(m.filter, 16, "…")) + muted.Render(" • ") + right
-		}
-		if !m.follow {
-			right = lipgloss.NewStyle().Foreground(th.Pink).Render(fmt.Sprintf("↓ %d new", m.unseen)) + muted.Render(" • ") + right
-		}
-		right += " " + m.fullChip()
+	if m.filter != "" {
+		right = lipgloss.NewStyle().Foreground(th.Pink).Render("/ "+ansi.Truncate(m.filter, 16, "…")) + muted.Render(" • ") + right
 	}
-	right += " "
+	if !m.follow {
+		right = lipgloss.NewStyle().Foreground(th.Pink).Render(fmt.Sprintf("↓ %d new", m.unseen)) + muted.Render(" • ") + right
+	}
+	right += " " + m.cornerChip() + " "
 	space := m.width - lipgloss.Width(right)
 	left = ansi.Truncate(left, max(space-1, 0), "…")
 	return left + strings.Repeat(" ", max(space-lipgloss.Width(left), 1)) + right
+}
+
+// cornerChip is the bottom line's button at the right: out of full
+// screen, or More.
+func (m *Model) cornerChip() string {
+	if m.full {
+		return m.fullChip()
+	}
+	s := lipgloss.NewStyle().Padding(0, 1).Background(m.th.BarBg).Foreground(m.th.Muted)
+	if m.more {
+		s = s.Background(m.th.Purple).Foreground(onColor(m.th.Purple))
+	}
+	if m.hover == "more" {
+		s = s.Foreground(m.th.Pink).Underline(true)
+	}
+	if m.more {
+		return s.Render("? close")
+	}
+	return s.Render("? more")
 }
 
 // fullChip is the header's button out of full screen.
@@ -1252,21 +1278,21 @@ func (m *Model) fdevBadge() string {
 	return s.Render(version.Name())
 }
 
-// headerAt is "fdev" over fdev's name and "full" over the header's full
-// screen button.
+// headerAt is "fdev" over fdev's name and "more" or "full" over the
+// bottom line's button.
 func (m *Model) headerAt(x, y int) string {
-	if y != 0 {
+	if y != m.height-1 {
 		return ""
 	}
 	if x >= 0 && x < lipgloss.Width(m.fdevBadge()) {
 		return "fdev"
 	}
-	if !m.full {
-		return ""
-	}
-	w := lipgloss.Width(m.fullChip())
+	w := lipgloss.Width(m.cornerChip())
 	if x0 := m.width - 1 - w; x >= x0 && x < x0+w {
-		return "full"
+		if m.full {
+			return "full"
+		}
+		return "more"
 	}
 	return ""
 }
