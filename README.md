@@ -502,6 +502,13 @@ only the bottom line stays under the logs. It is off at every start.
 
 Then the logs, for this project:
 
+- **Style**: *Status* (the bottom line is a bar: errors, how long it has
+  run, **? more**), *Dots* (a colored dot instead of `INFO`, and the time
+  only once a minute), *Rail* (a line down the left, with the level as its
+  mark: `◇` info, `▲` warning, `■` error, `↔` network), *Blocks* (a call
+  and its response in one box, each error in a red box) or *Tabs* (the
+  bottom line is filters: All, Network, Errors, Warnings, Bookmarked;
+  click one, or `tab` and `shift+tab`).
 - **Layout**: *lines* (compact, like charmbracelet/log), *columns* (a tag
   column; network lines as `METHOD STATUS URL TOOK SIZE` columns) or *table*
   (the columns with borders and a header).

@@ -13,6 +13,7 @@ env:
 # How the log viewer draws logs (optional). Each user can change it with `l`
 # in the viewer; their choice is kept in their cache, not here.
 logs:
+  style: status     # status (a bar at the bottom), dots, rail, blocks (calls and errors in boxes) or tabs
   layout: columns   # lines (compact), columns (aligned) or table (with borders)
   labels: badge     # text, or badge: the level on a colored background
   spacing: 0        # blank lines between logs: 0, 1 or 2

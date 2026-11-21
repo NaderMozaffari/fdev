@@ -71,6 +71,11 @@ func (i *Info) UnmarshalYAML(node *yaml.Node) error {
 
 // Look is how the log viewer draws and keeps logs.
 type Look struct {
+	// Style is how the log screen is drawn: status (a bar at the bottom),
+	// dots (a colored dot for the level, the time once a minute), rail (a
+	// line down the left, the level as its mark), blocks (calls and
+	// errors in boxes) or tabs (the bottom line is filters to pick).
+	Style   string `yaml:"style" json:"style,omitempty"`
 	Layout  string `yaml:"layout" json:"layout"`   // lines, columns or table
 	Labels  string `yaml:"labels" json:"labels"`   // text or badge
 	Spacing int    `yaml:"spacing" json:"spacing"` // blank lines between logs
@@ -108,6 +113,11 @@ const (
 	GroupTag      = "tag"
 	GroupOff      = "off"
 	CheckpointOff = "off"
+	StyleStatus   = "status"
+	StyleDots     = "dots"
+	StyleRail     = "rail"
+	StyleBlocks   = "blocks"
+	StyleTabs     = "tabs"
 )
 
 // CheckpointQuiet is how long the logs are quiet before the viewer marks
@@ -122,6 +132,11 @@ func (l Look) CheckpointQuiet() time.Duration {
 
 // WithDefaults fills what l leaves empty.
 func (l Look) WithDefaults() Look {
+	switch l.Style {
+	case StyleDots, StyleRail, StyleBlocks, StyleTabs:
+	default:
+		l.Style = StyleStatus
+	}
 	if l.Layout != LayoutColumns && l.Layout != LayoutTable {
 		l.Layout = LayoutLines
 	}

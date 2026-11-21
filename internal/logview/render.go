@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/NaderMozaffari/fdev/internal/config"
 	"github.com/NaderMozaffari/fdev/internal/theme"
 )
 
@@ -221,17 +222,61 @@ func (m *Model) entryRows(e *Entry, width int) []row {
 	if e.cached == key {
 		return e.cache
 	}
-	texts := m.renderEntry(e, width)
+	var texts []string
+	off := 0 // the box's top border
+	if m.boxed(e) {
+		texts, off = m.blockRows(e, m.renderEntry(e, width-4), width), 1
+	} else {
+		texts = m.renderEntry(e, width)
+	}
 	rows := make([]row, len(texts))
 	for i, t := range texts {
 		more := strings.HasPrefix(t, hintMark)
-		rows[i] = row{entry: e, first: i == 0, more: more, text: strings.TrimPrefix(t, hintMark)}
-		if k, ok := e.foldAt[i]; ok {
+		rows[i] = row{entry: e, first: i == off, more: more, text: strings.TrimPrefix(t, hintMark)}
+		if k, ok := e.foldAt[i-off]; ok {
 			rows[i].fold = k + 1
 		}
 	}
 	e.cached, e.cache = key, rows
 	return rows
+}
+
+// boxed is whether a log is drawn in a box, in the blocks style: a call
+// once its response came (its request's row is then left out, see
+// visible) and an error.
+func (m *Model) boxed(e *Entry) bool {
+	if m.look.Style != config.StyleBlocks || m.on["raw"] || e.isRule() || e.Kind == KindTool {
+		return false
+	}
+	name, _ := label(m.th, e.Level)
+	return e.Level == "response" || name == "ERRO" || name == "FATA" || name == "FAIL"
+}
+
+// blockRows puts a log's rows in a box as wide as the screen: red for an error,
+// the call's color for a call.
+//
+//	╭──────────────────────────────────────╮
+//	│ 01:37:24 RESP ↗ POST ← placeOrder 402 │
+//	╰──────────────────────────────────────╯
+func (m *Model) blockRows(e *Entry, texts []string, width int) []string {
+	c := m.th.Subtle
+	if name, col := label(m.th, e.Level); name != "RESP" {
+		c = col
+	} else if e.call > 0 {
+		c = m.callColor(e)
+	}
+	b := lipgloss.NewStyle().Foreground(c)
+	inner := max(width-4, 1)
+	out := []string{b.Render("╭" + strings.Repeat("─", inner+2) + "╮")}
+	for _, t := range texts {
+		mark := ""
+		if strings.HasPrefix(t, hintMark) {
+			mark, t = hintMark, strings.TrimPrefix(t, hintMark)
+		}
+		t = ansi.Truncate(t, inner, "")
+		out = append(out, mark+b.Render("│ ")+t+strings.Repeat(" ", max(inner-lipgloss.Width(t), 0))+b.Render(" │"))
+	}
+	return append(out, b.Render("╰"+strings.Repeat("─", inner+2)+"╯"))
 }
 
 func (m *Model) renderEntry(e *Entry, width int) []string {
@@ -270,17 +315,21 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 
 	// time LEVL ↗ tag message key=value, like charmbracelet/log; in the
 	// columns and table layouts the tag has a column of its own.
-	prefix := ""
+	// On the rail the level's mark comes first, the rail itself under it.
+	prefix, lvl := "", ""
+	if c.labelW > 0 {
+		lvl = strings.Repeat(" ", c.labelW) + c.sep
+		if e.Kind != KindTool {
+			lvl = m.labelText(c, e.Level) + c.sep
+		}
+	}
+	if c.mark == config.StyleRail {
+		prefix, lvl = lvl, ""
+	}
 	if c.timeW > 0 {
 		prefix += muted.Render(e.Time.Format(c.timeFormat)) + c.sep
 	}
-	if c.labelW > 0 {
-		if e.Kind == KindTool {
-			prefix += strings.Repeat(" ", c.labelW) + c.sep
-		} else {
-			prefix += m.labelText(c, e.Level) + c.sep
-		}
-	}
+	prefix += lvl
 	if e.At != "" {
 		prefix += p.fg(m.th.Fuchsia).Render(iconGlyph) + c.sep
 	} else {
@@ -289,6 +338,9 @@ func (m *Model) renderEntry(e *Entry, width int) []string {
 	indent := c.blank()
 	if !c.aligned {
 		indent = strings.Repeat(" ", lipgloss.Width(prefix))
+	}
+	if c.mark == config.StyleRail && c.labelW > 0 {
+		indent = p.fg(m.th.Subtle).Render("│") + indent[1:]
 	}
 	if e.hidden { // an empty row, and the button that shows the log again
 		if c.tagW > 0 {
