@@ -163,6 +163,19 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Nad
 > `'sh' is not recognized` or `'irm' is not recognized` means the command
 > is for another shell: in `cmd`, use the Command Prompt line above.
 
+**Or with an installer**, if you'd rather click than type: download
+[`fdev_macos.dmg`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_macos.dmg)
+or [`fdev_windows_setup.exe`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_windows_setup.exe)
+from the [releases](https://github.com/NaderMozaffari/fdev/releases). It
+carries fdev inside it, so it installs with no internet. It asks where to
+put fdev (just for you, or for everyone), which releases to follow
+(stable, or beta too; stable can't be picked until there is a stable
+release), whether to add it to your PATH, and which theme fdev should use.
+Online, it checks GitHub and installs a newer release of that channel when
+there is one, so running it again updates fdev, as `fdev update` does. It
+isn't signed yet: on macOS, right-click *Install fdev* › *Open* the first
+time; on Windows, *More info* › *Run anyway*.
+
 The scripts install to `%LOCALAPPDATA%\Programs\fdev` on Windows and
 `~/.fdev/bin` elsewhere (`FDEV_INSTALL_DIR` to change it), and put it on
 your PATH: the user PATH on Windows, and the startup file of each shell you

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What the installer connects to and why, for firewalls such as Little
+     Snitch, which show it when asking whether to allow a connection. It goes
+     in Install fdev.app/Contents/Resources (scripts/installer.sh). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationDescription</key>
+	<string>Install fdev downloads fdev, a terminal launcher and log viewer for Flutter, from its GitHub release, checks it against the release's checksums and puts it on your Mac. It connects to nothing but GitHub, and sends nothing about you.</string>
+	<key>DeveloperName</key>
+	<string>Nader Mozaffari</string>
+	<key>Website</key>
+	<string>https://github.com/NaderMozaffari/fdev</string>
+	<key>Connections</key>
+	<array>
+		<dict>
+			<key>IsIncoming</key>
+			<false/>
+			<key>Host</key>
+			<string>api.github.com</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Purpose</key>
+			<string>Finds the fdev release to install, and reads its list of files and checksums.</string>
+			<key>DenyConsequences</key>
+			<string>The installer can't find fdev and installs nothing.</string>
+		</dict>
+		<dict>
+			<key>IsIncoming</key>
+			<false/>
+			<key>Host</key>
+			<string>objects.githubusercontent.com</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Purpose</key>
+			<string>Downloads fdev's archive and checksums.txt, which GitHub serves from here.</string>
+			<key>DenyConsequences</key>
+			<string>The download fails and nothing is installed.</string>
+		</dict>
+		<dict>
+			<key>IsIncoming</key>
+			<false/>
+			<key>Host</key>
+			<string>release-assets.githubusercontent.com</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Purpose</key>
+			<string>Downloads fdev's archive and checksums.txt, which GitHub also serves from here.</string>
+			<key>DenyConsequences</key>
+			<string>The download fails and nothing is installed.</string>
+		</dict>
+	</array>
+	<key>Services</key>
+	<array/>
+</dict>
+</plist>

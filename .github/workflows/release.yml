@@ -28,3 +28,19 @@ jobs:
         env:
           RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
           GH_TOKEN: ${{ vars.RELEASE_REPO && secrets.RELEASE_TOKEN || github.token }}
+
+  # The Mac and Windows installers (installer/), added to the same release.
+  # The Mac app needs Xcode, so this runs on macOS.
+  installers:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: installer/go.mod
+      - run: cd installer && go test -tags desktop,production ./...
+      - run: scripts/installer.sh "$GITHUB_REF_NAME" --publish
+        env:
+          RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
+          GH_TOKEN: ${{ vars.RELEASE_REPO && secrets.RELEASE_TOKEN || github.token }}

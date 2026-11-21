@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Install fdev</title>
+<style>
+/* The fonts ship inside the installer (fonts/, SIL OFL), so it talks to
+   no one but GitHub, and looks the same offline. */
+@font-face { font-family: 'JetBrains Mono'; src: url(fonts/JetBrainsMono.woff2) format('woff2'); font-weight: 400 800; font-display: block; }
+@font-face { font-family: 'Silkscreen'; src: url(fonts/Silkscreen.woff2) format('woff2'); font-weight: 400; font-display: block; }
+/* The installer's look: fdev's own, a terminal in a window. Colours are
+   the theme the person picks (THEMES below, from internal/theme), set as
+   these variables; sprites are internal/sprite's, drawn as pixels. */
+:root {
+  --bg: #16161E; --panel: #1C1C26; --fg: #DDDDDD; --muted: #8F8A99; --subtle: #33333F; --bar: #2A2A34;
+  --accent: #F780E2; --on-accent: #16161E; --pink: #EE6FF8; --accent2: #7571F9; --purple: #5F5FD7;
+  --cream: #FFFDF5; --green: #02BF87; --cyan: #5FFFD7; --yellow: #D7FF87; --red: #ED567A;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --pixel: 'Silkscreen', var(--mono);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font: 13px/20px var(--mono); user-select: none; -webkit-user-select: none; cursor: default; }
+button { font: inherit; cursor: pointer; --wails-draggable: no-drag; }
+h1 { margin: 0; font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+p { margin: 0; }
+.win { height: 100%; display: flex; flex-direction: column; }
+.cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+
+/* Windows: the page draws the title bar. */
+.caption { height: 32px; flex: none; display: flex; align-items: center; background: var(--panel); border-bottom: 1px solid var(--subtle); --wails-draggable: drag; }
+.caption .title { display: flex; align-items: center; gap: 10px; padding-left: 12px; flex: 1; font-size: 12px; }
+.cap { width: 46px; height: 32px; border: 0; background: transparent; color: var(--fg); display: flex; align-items: center; justify-content: center; }
+.cap:hover { background: var(--subtle); }
+.cap.x:hover { background: #C42B1C; color: #FFFFFF; }
+
+aside { background-color: var(--panel); background-image: radial-gradient(var(--subtle) 1px, transparent 1.6px); background-size: 16px 16px; background-position: 8px 8px; border-right: 1px solid var(--subtle); padding: 28px 20px 20px; display: flex; flex-direction: column; gap: 24px; min-height: 0; --wails-draggable: drag; }
+.mac aside { padding-top: 52px; } /* room for the window's own traffic lights */
+.brand { display: flex; flex-direction: column; gap: 16px; padding: 0 4px; }
+.logo { filter: drop-shadow(4px 4px 0 var(--purple)); }
+.badge { background: var(--purple); color: var(--cream); padding: 0 8px; font-weight: 700; }
+nav { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-left: 2px solid transparent; }
+.row.cur, .menu .row.cur { border-left-color: var(--pink-dim); background: linear-gradient(90deg, var(--sel-from), var(--sel-to)); }
+.row .name { font-family: var(--pixel); font-size: 12px; line-height: 16px; letter-spacing: .04em; color: var(--muted); }
+.row.cur .name { color: var(--pink); }
+.row.done .name { color: var(--fg); }
+.row .desc { color: var(--muted); font-size: 12px; line-height: 16px; }
+.row .check { margin-left: auto; color: var(--green); font-weight: 700; }
+
+main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.content { flex: 1; padding: 32px 44px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow: hidden; }
+.mac .content { padding-top: 40px; }
+.eyebrow { font-family: var(--pixel); font-size: 10px; line-height: 12px; letter-spacing: .1em; color: var(--accent2); --wails-draggable: drag; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.muted { color: var(--muted); }
+.card { border: 1px solid var(--subtle); border-radius: 6px; background: var(--panel); overflow: hidden; }
+.card-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--subtle); }
+.menu { padding: 8px 0; display: flex; flex-direction: column; }
+.menu .row { gap: 14px; padding: 6px 14px; }
+.menu .row b { color: var(--fg); }
+.menu .row.cur b { color: var(--pink); }
+.problem { border: 1px solid var(--red); border-radius: 6px; padding: 10px 14px; color: var(--fg); }
+.problem b { color: var(--red); }
+
+.opt { display: flex; gap: 10px; align-items: baseline; text-align: left; background: transparent; border: 0; padding: 5px 0; color: var(--fg); }
+.opt .sel { color: var(--accent); width: 10px; font-weight: 700; }
+.opt .path { font-weight: 700; }
+.opt.on { color: var(--green); }
+.opt.off { cursor: not-allowed; color: var(--muted); }
+.status-line, .net { display: flex; align-items: center; gap: 8px; }
+.net { display: inline-flex; }
+.status-line i, .net i { width: 8px; height: 8px; flex: none; }
+.status-line b { white-space: nowrap; }
+.net i.blink { background: var(--accent); }
+.blink { animation: blink 1s steps(1) infinite; }
+.ask { color: var(--accent2); font-weight: 700; }
+.yn { height: 28px; padding: 0 16px; border: 0; background: var(--bar); color: var(--fg); font-weight: 700; }
+.yn.on { background: var(--accent); color: var(--on-accent); }
+.swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.sw { width: 64px; padding: 4px; background: transparent; border: 2px solid var(--subtle); display: flex; flex-direction: column; gap: 5px; transition: transform .15s; }
+.sw:hover { transform: translateY(-2px); }
+.sw.on { border-color: var(--accent); }
+.sw .chips { display: flex; height: 28px; align-self: stretch; }
+.sw .chips i { flex: 1; }
+.sw .chips i:first-child { flex: 2; }
+.sw .label { font-family: var(--pixel); font-size: 8px; line-height: 10px; color: var(--muted); align-self: center; }
+.sw.on .label { color: var(--fg); }
+
+.log { font-size: 12px; }
+.status { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--subtle); color: var(--muted); }
+.lines { padding: 8px 12px; display: flex; flex-direction: column; height: 152px; overflow: hidden; justify-content: flex-end; user-select: text; -webkit-user-select: text; }
+.line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rv .3s ease-out both; }
+.line.step { display: flex; align-items: center; gap: 6px; }
+.lvl { display: inline-block; width: 48px; font-weight: 700; }
+.INFO { color: var(--cyan); } .STEP, .DEBUG { color: var(--accent2); } .WARN { color: var(--yellow); } .ERROR { color: var(--red); }
+.track { flex: 1; height: 8px; background: var(--subtle); }
+.track span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.segs { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
+.segs i { height: 10px; background: var(--subtle); transition: background .15s; }
+.segs i.lit { background: var(--accent); }
+.dots i { display: inline-block; width: 6px; height: 6px; margin-left: 5px; background: var(--accent); animation: blink 1s steps(1) infinite; }
+.dots i:nth-child(2) { animation-delay: .33s; } .dots i:nth-child(3) { animation-delay: .66s; }
+
+.cmd { padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 24px; }
+.cmd .prompt { color: var(--accent); }
+.cursor { display: inline-block; width: 9px; height: 18px; margin-left: 3px; vertical-align: -4px; background: var(--fg); animation: blink 1s steps(1) infinite; }
+.runs { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.runs .tag { font-family: var(--pixel); font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+.runs span { display: flex; align-items: center; gap: 8px; }
+label.check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+footer { height: 64px; flex: none; border-top: 1px solid var(--subtle); display: flex; align-items: center; gap: 8px; padding: 0 24px 0 44px; }
+footer .note { color: var(--muted); font-size: 12px; min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn { position: relative; overflow: hidden; height: 36px; padding: 0 20px; border: 0; background: var(--accent); color: var(--on-accent); font-weight: 800; }
+.btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.5) 50%, transparent 70%); transform: translateX(-120%); }
+.btn:hover::after { transition: transform .6s ease-out; transform: translateX(120%); }
+.btn:disabled { cursor: progress; opacity: .8; }
+.btn2 { height: 36px; padding: 0 18px; border: 1px solid var(--subtle); background: var(--bar); color: var(--fg); }
+.btn2:hover, .copy:hover { background: var(--subtle); }
+.copy { height: 28px; padding: 0 12px; border: 1px solid var(--subtle); background: var(--bar); color: var(--fg); font-size: 12px; }
+button:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+.px { display: grid; flex: none; }
+.shine { animation: shine 2.8s linear infinite; }
+@keyframes shine { 0%, 60%, 100% { filter: none; } 70% { filter: brightness(1.75) saturate(.55); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes rv { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .shine, .cursor, .dots i, .line { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="win" id="win"></div>
+<script>
+// fdev's themes, from internal/theme/theme.go. muted is lifted where the
+// source misses 4.5:1 on its background.
+const THEMES = {
+  charm: { name: 'Charm', bg: '#16161E', panel: '#1C1C26', fg: '#DDDDDD', muted: '#8F8A99', subtle: '#33333F', bar: '#2A2A34', accent: '#F780E2', onAccent: '#16161E', pink: '#EE6FF8', accent2: '#7571F9', purple: '#5F5FD7', cream: '#FFFDF5', green: '#02BF87', cyan: '#5FFFD7', yellow: '#D7FF87', red: '#ED567A', selFrom: '#4A2C5E', selTo: '#1C1C26', pinkDim: '#AD58B4', dark: true },
+  dracula: { name: 'Dracula', bg: '#282A36', panel: '#21222C', fg: '#F8F8F2', muted: '#9AA3CF', subtle: '#44475A', bar: '#343746', accent: '#FF79C6', onAccent: '#282A36', pink: '#FF92DF', accent2: '#BD93F9', purple: '#6C5BB8', cream: '#FFFDF5', green: '#50FA7B', cyan: '#8BE9FD', yellow: '#F1FA8C', red: '#FF5555', selFrom: '#5A3E6E', selTo: '#21222C', pinkDim: '#BD5A9F', dark: true },
+  tokyo: { name: 'Tokyo', bg: '#1A1B26', panel: '#16161E', fg: '#C0CAF5', muted: '#8189B8', subtle: '#292E42', bar: '#24283B', accent: '#BB9AF7', onAccent: '#1A1B26', pink: '#F7768E', accent2: '#7AA2F7', purple: '#3D59A1', cream: '#FFFDF5', green: '#9ECE6A', cyan: '#7DCFFF', yellow: '#E0AF68', red: '#F7768E', selFrom: '#33335A', selTo: '#16161E', pinkDim: '#9D7CD8', dark: true },
+  catppuccin: { name: 'Mocha', bg: '#1E1E2E', panel: '#181825', fg: '#CDD6F4', muted: '#9399B2', subtle: '#45475A', bar: '#313244', accent: '#F5C2E7', onAccent: '#1E1E2E', pink: '#CBA6F7', accent2: '#89B4FA', purple: '#8839EF', cream: '#FFFDF5', green: '#A6E3A1', cyan: '#94E2D5', yellow: '#F9E2AF', red: '#F38BA8', selFrom: '#45375C', selTo: '#181825', pinkDim: '#9A7BC4', dark: true },
+  gruvbox: { name: 'Gruvbox', bg: '#282828', panel: '#1D2021', fg: '#EBDBB2', muted: '#A89984', subtle: '#504945', bar: '#3C3836', accent: '#D3869B', onAccent: '#282828', pink: '#FE8019', accent2: '#83A598', purple: '#8F3F71', cream: '#FBF1C7', green: '#B8BB26', cyan: '#8EC07C', yellow: '#FABD2F', red: '#FB4934', selFrom: '#4E3A2A', selTo: '#1D2021', pinkDim: '#B16286', dark: true },
+  latte: { name: 'Latte', bg: '#EFF1F5', panel: '#E6E9EF', fg: '#4C4F69', muted: '#5C5F77', subtle: '#CCD0DA', bar: '#DCE0E8', accent: '#8839EF', onAccent: '#FFFFFF', pink: '#8839EF', accent2: '#1E66F5', purple: '#5C6BD8', cream: '#FFFFFF', green: '#2E7D1F', cyan: '#0F7A80', yellow: '#DF8E1D', red: '#D20F39', selFrom: '#DCCBF5', selTo: '#E6E9EF', pinkDim: '#B48AE8', dark: false }
+};
+
+// fdev's sprites, from internal/sprite: # is the colour, + a lighter shade.
+const SPRITES = {
+  run: ['..#.......', '..###.....', '..#####...', '..#######.', '..#####...', '..###.....', '..#.......', '..........'],
+  option: ['...####...', '..#....#..', '.#..++..#.', '.#.++++.#.', '.#..++..#.', '..#....#..', '...####...', '..........'],
+  build: ['..######..', '.#++++++#.', '##########', '#...##...#', '#...++...#', '#........#', '##########', '..........'],
+  star: ['....##....', '....##....', '##########', '.##++++##.', '..######..', '..##..##..', '.##....##.', '..........'],
+  android: ['.#......#.', '..#....#..', '..######..', '.##.##.##.', '.########.', '##########', '##########', '..........'],
+  ios: ['.....+....', '....+.....', '..##.###..', '.########.', '.#######..', '.#######..', '.########.', '..##..##..'],
+  web: ['...####...', '..#.##.#..', '.#..##..#.', '.########.', '.#..##..#.', '..#.##.#..', '...####...', '..........'],
+  desktop: ['##########', '#++++++++#', '#++++++++#', '#++++++++#', '##########', '....##....', '..######..', '..........'],
+  windows: ['.####.++++', '.####.++++', '.####.++++', '..........', '.++++.####', '.++++.####', '.++++.####', '..........']
+};
+
+// "fdev" in a 5×7 pixel face, one column apart.
+const WORD = (() => {
+  const F = ['..###', '.#...', '.#...', '####.', '.#...', '.#...', '.#...'];
+  const D = ['....#', '....#', '.####', '#...#', '#...#', '#...#', '.####'];
+  const E = ['.....', '.....', '.###.', '#...#', '#####', '#....', '.####'];
+  const V = ['.....', '.....', '#...#', '#...#', '.#.#.', '.#.#.', '..#..'];
+  return F.map((_, r) => F[r] + '.' + D[r] + '.' + E[r] + '.' + V[r]);
+})();
+
+const STEPS = [['welcome', 'what fdev does', 'run'], ['setup', 'where it lives', 'option'], ['install', 'download and verify', 'build'], ['ready', 'run your first app', 'star']];
+
+const go = () => window.go.main.App;
+const rt = () => window.runtime;
+
+const S = {
+  step: 0, theme: 'charm', dest: 'user', path: true, open: true, copied: false, channel: 'beta',
+  info: null, error: null,           // Prepare's answer
+  net: 'checking',                   // Check: checking, online or offline
+  running: false, failed: null,      // Install
+  logs: [], dl: 0, overall: 0
+};
+
+// newer is whether version a comes after b (semver: v1.0.0 after v1.0.0-beta.2).
+function newer(a, b) {
+  const p = (v) => { const [core, pre] = v.replace(/^v/, '').split('-'); return [core.split('.').map(Number), pre ? pre.split('.') : null]; };
+  const [ca, pa] = p(a), [cb, pb] = p(b);
+  for (let i = 0; i < 3; i++) if (ca[i] !== cb[i]) return ca[i] > cb[i];
+  if (!pa || !pb) return !pa && !!pb;
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i], y = pb[i];
+    if (x === undefined || y === undefined) return y === undefined && x !== undefined;
+    if (x === y) continue;
+    const nx = /^\d+$/.test(x), ny = /^\d+$/.test(y);
+    if (nx && ny) return Number(x) > Number(y);
+    return nx !== ny ? ny : x > y;
+  }
+  return false;
+}
+
+// choice is what installing a channel means, from Go's Choice.
+const choice = (ch = S.channel) => (S.info ? S.info.choices.find((c) => c.channel === ch) : null) || { channel: ch, tag: '' };
+const target = () => choice().tag;
+// A first guess for the window's frame, until Prepare says which OS this is.
+let IS_MAC = navigator.userAgent.includes('Mac');
+const t = () => THEMES[S.theme] || THEMES.charm;
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+function mix(a, b, k) {
+  const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16));
+  const x = h(a), y = h(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * k).toString(16).padStart(2, '0')).join('');
+}
+
+// pixels draws a sprite: color is a colour, or a function of the column.
+function pixels(rows, color, size, shine, cls = '') {
+  const w = rows[0].length;
+  let cells = '';
+  rows.forEach((row) => [...row].forEach((ch, c) => {
+    const col = typeof color === 'function' ? color(c, w) : color;
+    const bg = ch === '#' ? col : ch === '+' ? mix(col, '#ffffff', 0.45) : 'transparent';
+    const on = ch !== '.' && shine;
+    cells += `<i${on ? ' class="shine"' : ''} style="background:${bg}${on ? `;animation-delay:${(c * 0.06).toFixed(2)}s` : ''}"></i>`;
+  }));
+  return `<div class="px ${cls}" aria-hidden="true" style="grid-template-columns:repeat(${w},${size}px);grid-auto-rows:${size}px">${cells}</div>`;
+}
+
+function applyTheme() {
+  const th = t(), root = document.documentElement.style;
+  const vars = { bg: th.bg, panel: th.panel, fg: th.fg, muted: th.muted, subtle: th.subtle, bar: th.bar, accent: th.accent, 'on-accent': th.onAccent, pink: th.pink, accent2: th.accent2, purple: th.purple, cream: th.cream, green: th.green, cyan: th.cyan, yellow: th.yellow, red: th.red, 'sel-from': th.selFrom, 'sel-to': th.selTo, 'pink-dim': th.pinkDim };
+  for (const [k, v] of Object.entries(vars)) root.setProperty('--' + k, v);
+  root.colorScheme = th.dark ? 'dark' : 'light';
+}
+
+function dest() {
+  const ds = S.info ? S.info.dests : [];
+  return ds.find((d) => d.id === S.dest) || ds[0];
+}
+
+function mb(n) { return (n / 1e6).toFixed(1) + ' MB'; }
+
+// ---- screens -------------------------------------------------------------
+
+function welcome() {
+  const th = t(), sel = 'cur';
+  const demo = [['android', th.green, 'Run on Pixel 8', 'dev flavor · debug'], ['ios', th.fg, 'Run on iPhone 16', 'staging · profile'], ['web', th.cyan, 'Run in Chrome', 'web-server :8080']]
+    .map(([sp, col, title, desc], k) => `<div class="row ${k === 0 ? sel : ''}">${pixels(SPRITES[sp], col, 2, k === 0)}<b>${title}</b><span class="muted">${desc}</span></div>`).join('');
+  const nothing = S.info && S.net !== 'checking' && !S.info.choices.some((c) => c.tag);
+  const problem = S.error ? `<div class="problem"><b>Something went wrong.</b> ${esc(S.error)}</div>`
+    : nothing ? `<div class="problem"><b>No fdev to install.</b> This installer carries none, and GitHub can't be reached to download it. Check your connection, then try again.</div>` : '';
+  // What is on this computer already, and whether this would update it.
+  const inst = S.info && S.info.installed, tag = target();
+  let status = '';
+  if (inst) {
+    const where = inst.where ? ` in ${esc(inst.where)}` : '';
+    if (tag && newer(tag, inst.tag)) status = `<div class="status-line"><i style="background:var(--yellow)"></i><span>fdev ${esc(inst.tag)} is installed${where} · <b>${esc(tag)}</b> is ready</span></div>`;
+    else if (tag === inst.tag) status = `<div class="status-line"><i style="background:var(--green)"></i><span>fdev ${esc(inst.tag)} is installed${where} and up to date</span></div>`;
+    else status = `<div class="status-line"><i style="background:var(--muted)"></i><span>fdev ${esc(inst.tag)} is installed${where}</span></div>`;
+  }
+  return `<div class="stack">
+    <h1>${inst && tag && newer(tag, inst.tag) ? 'A newer fdev is ready.' : 'Run Flutter from the terminal. Read every log.'}</h1>
+    <p class="muted" style="max-width:54ch">fdev finds your project's targets, asks what your Makefile asks, picks a device and streams logs you can filter, pin and fold.</p>
+    ${status}
+    ${problem || `<div class="card" style="margin-top:4px">
+      <div class="card-head"><span class="badge">fdev</span><span class="muted">acme_shop · 3 targets</span></div>
+      <div class="menu">${demo}</div>
+    </div>`}
+  </div>`;
+}
+
+function setup() {
+  const ds = S.info.dests, d = dest();
+  const opts = ds.map((x) => `<button class="opt ${x.id === S.dest ? 'on' : ''}" role="radio" aria-checked="${x.id === S.dest}" data-act="dest" data-id="${x.id}">
+      <span class="sel">${x.id === S.dest ? '›' : ''}</span><span class="path">${esc(x.shown)}</span><span class="muted">${esc(x.note)}</span></button>`).join('');
+  // /usr/local/bin is on every Mac's PATH already.
+  const pathRow = IS_MAC && d.admin
+    ? `<div class="muted">${esc(d.shown)} is on your PATH already.</div>`
+    : `<div style="display:flex;align-items:center;gap:16px">
+        <span class="ask">${IS_MAC ? 'Put fdev on your PATH?' : 'Add fdev to your PATH?'}</span>
+        <div style="display:flex;gap:8px">
+          <button class="yn ${S.path ? 'on' : ''}" aria-pressed="${S.path}" data-act="path" data-v="1">Yes</button>
+          <button class="yn ${S.path ? '' : 'on'}" aria-pressed="${!S.path}" data-act="path" data-v="0">No</button>
+        </div>
+      </div>`;
+  const sw = Object.entries(THEMES).map(([k, s]) => `<button class="sw ${k === S.theme ? 'on' : ''}" aria-pressed="${k === S.theme}" aria-label="${s.name} theme" data-act="theme" data-id="${k}">
+      <span class="chips"><i style="background:${s.bg}"></i><i style="background:${s.accent}"></i><i style="background:${s.accent2}"></i></span>
+      <span class="label">${s.name}</span></button>`).join('');
+  const chans = S.info.choices.map((c) => {
+    const on = c.channel === S.channel, off = !c.tag;
+    const note = off ? (c.channel === 'stable' ? 'no stable release yet' : S.net === 'checking' ? 'checking GitHub…' : 'needs the internet')
+      : c.download ? `${esc(c.tag)} · downloads ${mb(c.size)} from GitHub`
+      : `${esc(c.tag)} · in the installer, no internet needed`;
+    return `<button class="opt ${on ? 'on' : ''} ${off ? 'off' : ''}" role="radio" aria-checked="${on}" ${off ? 'disabled' : ''} data-act="channel" data-id="${c.channel}">
+      <span class="sel">${on ? '›' : ''}</span><span class="path" style="width:6ch">${c.channel}</span><span class="muted">${note}</span></button>`;
+  }).join('');
+  return `<div class="stack" style="gap:16px">
+    <h1>Where should fdev live?</h1>
+    <div role="radiogroup" aria-label="Install location" style="display:flex;flex-direction:column">${opts}</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div><span class="ask">Which releases?</span> <span class="muted">· fdev update keeps to it</span></div>
+      <div role="radiogroup" aria-label="Release channel" style="display:flex;flex-direction:column">${chans}</div>
+    </div>
+    ${pathRow}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div><span class="ask">Pick a theme</span> <span class="muted">· the installer and fdev both use it</span></div>
+      <div class="swatches">${sw}</div>
+    </div>
+  </div>`;
+}
+
+function logLine(l) {
+  if (l.level === 'STEP') {
+    return `<div class="line step"><span class="muted">${l.time}</span> <b class="lvl STEP">STEP</b><span>${esc(l.text)}</span><span class="track"><span id="dl" style="width:${S.dl}%"></span></span><span class="muted" id="dlpct">${S.dl}%</span></div>`;
+  }
+  return `<div class="line"><span class="muted">${l.time}</span> <b class="lvl ${l.level}">${l.level}</b>${esc(l.text)}</div>`;
+}
+
+function install() {
+  const i = S.info;
+  const segs = Array.from({ length: 24 }, (_, k) => `<i class="${k < Math.round(S.overall * 24) ? 'lit' : ''}"></i>`).join('');
+  return `<div class="stack">
+    <h1>${S.failed ? 'Install stopped' : 'Installing'}${S.failed ? '' : '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>'}</h1>
+    <div class="card log">
+      <div class="status"><i style="width:8px;height:8px;background:var(${S.failed ? '--red' : '--green'})"></i><span>fdev • ${esc(target())} • ${esc(S.channel)} • ${esc(i.platform)} • ${choice().download ? 'from GitHub' : 'offline'}</span></div>
+      <div class="lines" id="lines" role="log" aria-live="polite">${S.logs.map(logLine).join('')}</div>
+    </div>
+    <div class="segs" id="segs" aria-hidden="true">${segs}</div>
+    <div style="display:flex;justify-content:space-between" class="muted"><span>${choice().download ? 'download · verify · install' : 'unpack · install'}</span><span>${S.failed ? 'nothing was changed' : ''}</span></div>
+  </div>`;
+}
+
+function ready() {
+  const th = t();
+  const host = IS_MAC ? ['desktop', 'macos'] : ['windows', 'windows'];
+  const runs = [['android', th.green, 'android'], ['ios', th.fg, 'ios'], ['web', th.cyan, 'web'], [host[0], th.accent2, host[1]]]
+    .map(([sp, col, name]) => `<span>${pixels(SPRITES[sp], col, 2, false)}<span>${name}</span></span>`).join('');
+  const p = IS_MAC ? '$' : '&gt;';
+  return `<div class="stack" style="gap:20px">
+    <div style="display:flex;align-items:center;gap:24px">
+      ${pixels(SPRITES.star, th.yellow, 7, true, 'logo')}
+      <div class="stack" style="gap:6px;min-width:0">
+        <h1>fdev is installed.</h1>
+        <p class="muted">Open a ${IS_MAC ? '' : 'new '}terminal in any Flutter project. fdev reads its Makefile, flavors and devices on its own.</p>
+      </div>
+    </div>
+    <div class="card cmd">
+      <div style="flex:1;min-width:0;user-select:text;-webkit-user-select:text">
+        <div><span class="prompt">${p}</span> cd my_flutter_app</div>
+        <div><span class="prompt">${p}</span> fdev<span class="cursor"></span></div>
+      </div>
+      <button class="copy" data-act="copy">${S.copied ? 'Copied' : 'Copy'}</button>
+    </div>
+    <div class="runs"><span class="tag">RUNS ON</span>${runs}</div>
+    ${IS_MAC ? '' : `<label class="check"><input type="checkbox" id="open" data-act="open" ${S.open ? 'checked' : ''}> Open Windows Terminal when I finish</label>`}
+  </div>`;
+}
+
+// ---- frame ---------------------------------------------------------------
+
+function footer() {
+  const i = S.info, d = dest();
+  let note = '', back = '', primary = '', cancel = '';
+  const btn = (label, act, attrs = '') => `<button class="btn" data-act="${act}" ${attrs}>${label}</button>`;
+  const btn2 = (label, act) => `<button class="btn2" data-act="${act}">${label}</button>`;
+  switch (S.step) {
+    case 0: {
+      const any = i && i.choices.some((c) => c.tag);
+      const net = { checking: '<span class="net"><i class="blink"></i>checking GitHub…</span>', online: '<span class="net"><i style="background:var(--green)"></i>online</span>', offline: '<span class="net"><i style="background:var(--muted)"></i>offline</span>' }[S.net];
+      note = !i ? '' : S.net === 'offline' && i.included ? `${net} · no internet needed` : net;
+      primary = S.error || (i && !any && S.net !== 'checking') ? btn('Try again', 'retry') : btn(IS_MAC ? 'Continue' : 'Next', 'next', any ? '' : 'disabled');
+      cancel = IS_MAC ? '' : btn2('Cancel', 'quit');
+      break;
+    }
+    case 1: {
+      note = 'Installs to ' + esc(d.shown) + (d.admin ? (IS_MAC ? ' · asks for your password' : ' · asks for admin rights') : '');
+      back = btn2(IS_MAC ? 'Go Back' : 'Back', 'back0');
+      const inst = i.installed, tag = target();
+      const label = !inst ? 'Install' : tag === inst.tag ? 'Reinstall' : newer(tag, inst.tag) ? 'Update' : 'Install';
+      primary = btn(label, 'install', tag ? '' : 'disabled');
+      cancel = IS_MAC ? '' : btn2('Cancel', 'quit');
+      break;
+    }
+    case 2:
+      note = S.failed ? esc(S.failed) : 'Keep this window open';
+      primary = S.failed ? btn('Try again', 'back') : btn('Installing…', 'none', 'disabled');
+      cancel = S.failed && !IS_MAC ? btn2('Cancel', 'quit') : '';
+      break;
+    case 3:
+      note = S.channel === 'beta' ? 'fdev update follows betas · fdev channel stable switches' : 'fdev update follows stable releases · fdev channel beta switches';
+      back = IS_MAC ? btn2('Done', 'quit') : '';
+      primary = IS_MAC ? btn('Open Terminal', 'terminal') : btn('Finish', 'finish');
+      break;
+  }
+  return `<span class="note">${note}</span>${back}${primary}${cancel}`;
+}
+
+function render() {
+  applyTheme();
+  const th = t(), i = S.info, step = S.step;
+  const logo = pixels(WORD, (c, w) => mix(th.accent, th.accent2, c / (w - 1)), 10, true, 'logo');
+  const nav = STEPS.map(([label, desc, sp], k) => {
+    if (sp === 'build' && i && !choice().download) desc = 'unpack and copy';
+    const cur = k === step, done = k < step;
+    const col = cur ? th.accent : done ? th.green : mix(th.muted, th.panel, 0.35);
+    return `<div class="row ${cur ? 'cur' : done ? 'done' : ''}" ${cur ? 'aria-current="step"' : ''}>${pixels(SPRITES[sp], col, 3, cur)}
+      <div style="min-width:0;flex:1"><div class="name">${label}</div><div class="desc">${desc}</div></div><span class="check">${done ? '✓' : ''}</span></div>`;
+  }).join('');
+  const caption = IS_MAC ? '' : `<header class="caption">
+      <div class="title">${pixels(SPRITES.windows, th.accent, 1.6, false)}<span>fdev Setup</span></div>
+      <button class="cap" aria-label="Minimize" data-act="min"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" fill="none"/></svg></button>
+      <button class="cap x" aria-label="Close" data-act="quit"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" fill="none"/></svg></button>
+    </header>`;
+  const screen = [welcome, setup, install, ready][step]();
+  const eyebrow = ['WELCOME', 'SETUP', 'INSTALLING', 'READY'][step] + ' · ' + (step + 1) + ' OF 4';
+  const win = document.getElementById('win');
+  win.className = 'win ' + (IS_MAC ? 'mac' : 'windows');
+  win.innerHTML = `${caption}<div class="cols">
+    <aside>
+      <div class="brand">
+        <div role="img" aria-label="fdev">${logo}</div>
+        <div style="display:flex;gap:8px;align-items:center;padding-top:4px">
+          <span class="badge">${target() ? esc(target()) : '…'}</span><span class="muted">${target() ? esc(S.channel) + ' channel' : ''}</span>
+        </div>
+      </div>
+      <nav aria-label="Install steps">${nav}</nav>
+    </aside>
+    <main>
+      <div class="content"><div class="eyebrow">${eyebrow}</div>${screen}</div>
+      <footer>${footer()}</footer>
+    </main>
+  </div>`;
+}
+
+// ---- what happens --------------------------------------------------------
+
+// pickChannel keeps to the channel of the fdev installed, else of the one
+// in the installer, as long as it has something to install.
+function pickChannel() {
+  const i = S.info, has = (ch) => ch && choice(ch).tag;
+  const want = [S.picked, i.installed && i.installed.channel, i.included && i.included.channel, 'beta', 'stable'].find(has);
+  S.channel = want || 'beta';
+}
+
+// prepare reads what the installer can do offline, at once, then asks
+// GitHub for newer releases.
+function prepare() {
+  S.error = null;
+  S.net = 'checking';
+  render();
+  go().Prepare().then((info) => {
+    S.info = info;
+    IS_MAC = info.os === 'darwin';
+    if (THEMES[info.theme]) S.theme = info.theme;
+    S.dest = (info.installed && info.installed.dest) || info.dests[0].id;
+    pickChannel();
+    render();
+    return go().Check().then((choices) => { S.info.choices = choices; S.net = 'online'; })
+      .catch(() => { S.net = 'offline'; })
+      .finally(() => { pickChannel(); if (!S.running) render(); });
+  }).catch((err) => { S.error = String(err); S.net = 'offline'; render(); });
+}
+
+function startInstall() {
+  const d = dest();
+  Object.assign(S, { step: 2, running: true, failed: null, logs: [], dl: 0, overall: 0 });
+  addLog({ level: 'INFO', text: `installing fdev ${target()} (${S.channel}) in ${d.shown}`, time: new Date().toTimeString().slice(0, 8) });
+  render();
+  const addPath = S.path && !(IS_MAC && d.admin);
+  go().Install(d.id, addPath, S.theme, S.channel).then(() => {
+    S.running = false;
+    S.overall = 1;
+    paintProgress();
+    setTimeout(() => { S.step = 3; render(); }, 700);
+  }).catch((err) => {
+    S.running = false;
+    S.failed = String(err);
+    addLog({ level: 'ERROR', text: String(err), time: new Date().toTimeString().slice(0, 8) });
+    render();
+  });
+}
+
+function addLog(l) {
+  S.logs.push(l);
+  if (/^checksums/.test(l.text)) S.overall = Math.max(S.overall, 0.8);
+  if (/^copied/.test(l.text)) S.overall = Math.max(S.overall, 0.9);
+  const lines = document.getElementById('lines');
+  if (lines) { lines.insertAdjacentHTML('beforeend', logLine(l)); paintProgress(); }
+}
+
+// paintProgress moves the bars without redrawing the screen, which would
+// restart every animation on it.
+function paintProgress() {
+  const bar = document.getElementById('dl'), pct = document.getElementById('dlpct');
+  if (bar) bar.style.width = S.dl + '%';
+  if (pct) pct.textContent = S.dl + '%';
+  const segs = document.querySelectorAll('#segs i'), lit = Math.round(S.overall * 24);
+  segs.forEach((s, k) => s.classList.toggle('lit', k < lit));
+}
+
+const actions = {
+  next: () => { S.step = 1; render(); },
+  back: () => { S.step = 1; render(); },
+  back0: () => { S.step = 0; render(); },
+  channel: (el) => { S.channel = S.picked = el.dataset.id; render(); },
+  retry: prepare,
+  install: startInstall,
+  dest: (el) => { S.dest = el.dataset.id; render(); },
+  path: (el) => { S.path = el.dataset.v === '1'; render(); },
+  theme: (el) => { S.theme = el.dataset.id; render(); },
+  open: (el) => { S.open = el.checked; },
+  copy: () => { rt().ClipboardSetText('fdev'); S.copied = true; render(); },
+  terminal: () => go().OpenTerminal().finally(() => rt().Quit()),
+  finish: () => (S.open ? go().OpenTerminal() : Promise.resolve()).finally(() => rt().Quit()),
+  min: () => rt().WindowMinimise(),
+  quit: () => { if (!S.running) rt().Quit(); },
+  none: () => {}
+};
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (el && actions[el.dataset.act]) actions[el.dataset.act](el);
+});
+
+window.addEventListener('load', () => {
+  rt().EventsOn('log', addLog);
+  rt().EventsOn('progress', (done, total) => {
+    S.dl = Math.min(100, Math.round(done * 100 / total));
+    S.overall = Math.max(S.overall, 0.7 * done / total);
+    paintProgress();
+  });
+  prepare();
+});
+</script>
+</body>
+</html>

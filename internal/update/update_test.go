@@ -35,7 +35,7 @@ func TestExtract(t *testing.T) {
 	}
 	tw.Close()
 	gz.Close()
-	if got, err := extract(tgz.Bytes(), "fdev_linux_amd64.tar.gz"); err != nil || string(got) != "binary" {
+	if got, err := Extract(tgz.Bytes(), "fdev_linux_amd64.tar.gz"); err != nil || string(got) != "binary" {
 		t.Fatalf("tar.gz: %q, %v", got, err)
 	}
 
@@ -44,7 +44,7 @@ func TestExtract(t *testing.T) {
 	w, _ := zw.Create("fdev.exe")
 	_, _ = w.Write([]byte("exe"))
 	zw.Close()
-	if got, err := extract(zbuf.Bytes(), "fdev_windows_amd64.zip"); err != nil || string(got) != "exe" {
+	if got, err := Extract(zbuf.Bytes(), "fdev_windows_amd64.zip"); err != nil || string(got) != "exe" {
 		t.Fatalf("zip: %q, %v", got, err)
 	}
 }
