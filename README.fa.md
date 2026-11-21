@@ -137,7 +137,30 @@ Charm؛ خط‌های لاگ شبیه [Log](https://github.com/charmbracelet/log
 
 ## نصب
 
-فقط یک خط، بدون نیاز به نصب چیز دیگری: اسکریپت نسخه‌ی مناسب سیستم‌عامل و
+### با نصب‌کننده (مک، ویندوز)
+
+ساده‌ترین راه: نصب‌کننده را از
+[جدیدترین ریلیز](https://github.com/NaderMozaffari/fdev/releases) (اولین
+ریلیز صفحه، که فعلاً بتاست) دانلود و اجرا کنید.
+
+- **مک** (Intel و Apple silicon): `fdev_macos.dmg`، و بعد *Install fdev* داخل آن
+- **ویندوز**: `fdev_windows_setup.exe`
+
+خود fdev داخل نصب‌کننده است، پس بدون اینترنت نصب می‌کند. نصب‌کننده می‌پرسد
+fdev کجا نصب شود (فقط برای شما یا برای همه)، کدام نسخه‌ها را دنبال کند
+(stable، یا beta هم؛ تا نسخه‌ی stable منتشر نشود stable قابل انتخاب
+نیست)، به PATH اضافه شود یا نه، و fdev از کدام تم استفاده کند. اگر به
+اینترنت وصل باشد GitHub را بررسی می‌کند و اگر نسخه‌ی جدیدتری از آن کانال
+باشد همان را نصب می‌کند؛ پس اجرای دوباره‌اش fdev را به‌روز می‌کند، مثل
+`fdev update`.
+
+> [!NOTE]
+> نصب‌کننده‌ها هنوز امضا نشده‌اند. در مک بار اول روی *Install fdev* راست‌کلیک
+> کنید و *Open* را بزنید؛ در ویندوز *More info* و بعد *Run anyway*.
+
+### با یک خط در ترمینال
+
+یا فقط یک خط، بدون نیاز به نصب چیز دیگری: اسکریپت نسخه‌ی مناسب سیستم‌عامل و
 پردازنده‌تان را انتخاب می‌کند، آن را با checksum‌های ریلیز بررسی می‌کند و
 `fdev` را به PATH اضافه می‌کند. برای به‌روزرسانی دوباره اجرایش کنید یا
 `fdev update` را بزنید.
@@ -165,20 +188,6 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Nad
 > [!TIP]
 > خطای `'sh' is not recognized` یا `'irm' is not recognized` یعنی دستور
 > برای shell دیگری است: در `cmd` از خط Command Prompt بالا استفاده کنید.
-
-**یا با نصب‌کننده**، اگر کلیک را به تایپ ترجیح می‌دهید:
-[`fdev_macos.dmg`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_macos.dmg)
-یا [`fdev_windows_setup.exe`](https://github.com/NaderMozaffari/fdev/releases/latest/download/fdev_windows_setup.exe)
-را از [releases](https://github.com/NaderMozaffari/fdev/releases) دانلود
-کنید. خود fdev داخل نصب‌کننده است، پس بدون اینترنت نصب می‌کند. نصب‌کننده
-می‌پرسد fdev کجا نصب شود (فقط برای شما یا برای همه)، کدام نسخه‌ها را دنبال
-کند (stable، یا beta هم؛ تا نسخه‌ی stable منتشر نشود stable قابل انتخاب
-نیست)، به PATH اضافه شود یا نه، و fdev از کدام تم استفاده کند. اگر به
-اینترنت وصل باشد GitHub را بررسی می‌کند و اگر نسخه‌ی جدیدتری از آن کانال
-باشد همان را نصب می‌کند؛ پس اجرای دوباره‌اش fdev را به‌روز می‌کند، مثل
-`fdev update`. هنوز امضا نشده است:
-در مک بار اول روی *Install fdev* راست‌کلیک کنید و *Open* را بزنید؛ در
-ویندوز *More info* و بعد *Run anyway*.
 
 اسکریپت‌ها در ویندوز در `%LOCALAPPDATA%\Programs\fdev` و در بقیه‌ی
 سیستم‌ها در `~/.fdev/bin` نصب می‌کنند (با `FDEV_INSTALL_DIR` قابل تغییر
