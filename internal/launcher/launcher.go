@@ -483,7 +483,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyPressMsg:
-		if msg.String() == "ctrl+c" && !m.look().KeyOff("ctrl+c") {
+		if msg.String() == "ctrl+c" && !m.look().KeyOff("ctrl+c") && !m.editingLook { // in the settings it cancels them
 			return m, tea.Quit
 		}
 		if !m.typing() && m.screen != screenAsk {
@@ -813,9 +813,25 @@ func (m *Model) editLook() tea.Cmd {
 	return m.startForm()
 }
 
+// saveSettings closes the settings, keeping what they say.
+func (m *Model) saveSettings() tea.Cmd {
+	m.form = nil
+	m.editingLook, m.screen = false, m.lookFrom
+	m.saveLook(m.lookAnswer)
+	m.state.UI = m.uiAnswer.WithDefaults()
+	m.state.SaveUI()
+	m.showUI(m.state.UI)
+	m.loadSessions()
+	return m.list.NewStatusMessage(m.fg(m.th.Green).Render("✓ settings saved"))
+}
+
 func (m *Model) updateForm(msg tea.Msg) tea.Cmd {
 	if m.form == nil {
 		return nil
+	}
+	// esc closes the settings and keeps them; ctrl+c cancels.
+	if k, ok := msg.(tea.KeyPressMsg); ok && k.String() == "esc" && m.editingLook {
+		return m.saveSettings()
 	}
 	f, cmd := m.form.Update(msg)
 	if form, ok := f.(*huh.Form); ok {
@@ -825,14 +841,7 @@ func (m *Model) updateForm(msg tea.Msg) tea.Cmd {
 	case huh.StateAborted:
 		return m.goBack()
 	case huh.StateCompleted:
-		m.form = nil
-		m.editingLook, m.screen = false, m.lookFrom
-		m.saveLook(m.lookAnswer)
-		m.state.UI = m.uiAnswer.WithDefaults()
-		m.state.SaveUI()
-		m.showUI(m.state.UI)
-		m.loadSessions()
-		return m.list.NewStatusMessage(m.fg(m.th.Green).Render("✓ settings saved"))
+		return m.saveSettings()
 	}
 	// A theme or size is tried as soon as it is under the cursor.
 	if m.editingLook && m.uiAnswer != m.ui {

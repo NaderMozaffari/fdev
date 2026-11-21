@@ -218,7 +218,7 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 		huh.NewGroup(
 			huh.NewNote().Title(summary+"  ·  more under About"),
 			huh.NewSelect[string]().Title("Theme").
-				Description("tried as you move over it; esc puts the old one back").
+				Description("tried as you move over it; esc saves, ctrl+c puts the old one back").
 				Options(themes...).Value(&ui.Theme),
 			huh.NewSelect[string]().Title("Size of menus and their items").Options(
 				huh.NewOption("Auto · the biggest that fits the window", config.SizeAuto),
@@ -292,7 +292,7 @@ func SettingsForm(look *config.Look, ui *config.UI, th theme.Theme, about About)
 			huh.NewNote().Title("fdev "+version.Short()).
 				Description(factLines(version.Facts())+"\n\n"+noteTitle(cmp.Or(about.App, "The app"))+"\n"+factLines(about.Facts)).
 				Next(true).NextLabel("Save"),
-		).Title("About").Description("fdev and the app it runs; enter saves the settings"),
+		).Title("About").Description("fdev and the app it runs; enter or esc saves the settings"),
 	).
 		WithTheme(th.Huh()).
 		WithShowHelp(true)

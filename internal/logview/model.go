@@ -1441,12 +1441,13 @@ func short(d time.Duration) string {
 func (m *Model) openLook() tea.Cmd {
 	m.formLook, m.formUI, m.savedUI = m.look, m.ui, m.ui
 	m.lookForm = SettingsForm(&m.formLook, &m.formUI, m.th, m.o.About).WithShowHelp(!m.full)
+	// esc closes the settings and keeps them (updateLookForm); ctrl+c
+	// cancels, putting the old theme back.
 	keys := huh.NewDefaultKeyMap()
-	quit := []string{"esc", "ctrl+c"}
+	keys.Quit = key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("esc", "save · ctrl+c cancel"))
 	if m.look.KeyOff("ctrl+c") {
-		quit = quit[:1]
+		keys.Quit.SetEnabled(false)
 	}
-	keys.Quit = key.NewBinding(key.WithKeys(quit...), key.WithHelp("esc", "cancel"))
 	m.lookForm.WithKeyMap(keys).WithWidth(min(m.width-4, 76))
 	m.lookForm.Update(tea.WindowSizeMsg{Width: m.width, Height: m.logHeight()})
 	m.resize()
@@ -1454,6 +1455,12 @@ func (m *Model) openLook() tea.Cmd {
 }
 
 func (m *Model) updateLookForm(msg tea.Msg) tea.Cmd {
+	if k, ok := msg.(tea.KeyPressMsg); ok && k.String() == "esc" {
+		m.lookForm = nil
+		m.setUI(m.formUI, true)
+		m.applyLook(m.formLook)
+		return nil
+	}
 	f, cmd := m.lookForm.Update(msg)
 	if form, ok := f.(*huh.Form); ok {
 		m.lookForm = form
