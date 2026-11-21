@@ -483,8 +483,13 @@ func TestFullScreenAndTheme(t *testing.T) {
 	if m.th.Name != "charm-dark" || m.View().BackgroundColor == nil {
 		t.Errorf("the theme under the cursor is not tried: %q", m.th.Name)
 	}
-	press(m, "esc")
+	m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if m.th.Name != "auto" || m.screen == screenAsk || m.View().BackgroundColor != nil {
-		t.Errorf("esc kept theme %q on screen %v", m.th.Name, m.screen)
+		t.Errorf("ctrl+c kept theme %q on screen %v", m.th.Name, m.screen)
+	}
+	// esc closes the settings and keeps what was picked.
+	press(m, "t", "down", "esc")
+	if m.th.Name != "charm-dark" || m.screen == screenAsk || m.state.UI.Theme != "charm-dark" {
+		t.Errorf("esc did not keep the theme: %q, saved %q, screen %v", m.th.Name, m.state.UI.Theme, m.screen)
 	}
 }

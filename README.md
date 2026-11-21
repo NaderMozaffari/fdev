@@ -484,13 +484,15 @@ They are kept for the session only, and come from
 </table>
 
 `l` in the viewer (or **⚙ settings** / `s` in the menu, `t` for the theme)
-opens the settings. First the screen, for every project:
+opens the settings. `esc` closes them and keeps what you picked, on any
+page; `ctrl+c` closes them and keeps nothing. First the screen, for every
+project:
 
 - **Theme**: *Auto* (Charm's colors, dark or light like the terminal), or
   Charm dark or light, Dracula, Nord, Tokyo Night, Catppuccin (Mocha and
   Latte), Gruvbox or Solarized Light, which paint the terminal's
   background while fdev runs (where the terminal lets them). Each one is
-  tried as the cursor moves over it; `esc` puts the old one back.
+  tried as the cursor moves over it; `ctrl+c` puts the old one back.
 - **Size of menus and their items**: *Auto* takes the biggest that fits
   the window; *Small* is one line an item, no blank lines, and compact
   bars in the viewer (no section titles, one row of the command's

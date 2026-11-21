@@ -865,8 +865,8 @@ func TestCompactBars(t *testing.T) {
 	}
 }
 
-// The settings try a theme as the cursor moves over it, and cancelling
-// goes back to the one before.
+// The settings try a theme as the cursor moves over it; ctrl+c goes back
+// to the one before, esc keeps it.
 func TestSettingsTryTheTheme(t *testing.T) {
 	m := testModel(map[string]bool{})
 	m.ui = config.UI{Theme: theme.Auto, Size: config.SizeMedium}
@@ -889,9 +889,23 @@ func TestSettingsTryTheTheme(t *testing.T) {
 	if len(tried) == 0 || m.th.Name != "charm-dark" || m.th.TermBg == nil {
 		t.Fatalf("moving to a theme did not try it: %v, shown %q", tried, m.th.Name)
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if m.lookForm != nil || m.th.Name != theme.Auto || m.ui.Theme != theme.Auto {
 		t.Errorf("cancel left theme %q (ui %+v)", m.th.Name, m.ui)
+	}
+
+	// esc closes the settings and keeps them: a log style picked on the
+	// way is drawn at once.
+	saved := false
+	m.o.OnUI = func(ui config.UI, save bool) { saved = saved || save }
+	m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	m.formLook.Style = config.StyleRail // as picking it in the form does
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.lookForm != nil || m.look.Style != config.StyleRail || !saved {
+		t.Errorf("esc did not keep the settings: form open %v, style %q, saved %v", m.lookForm != nil, m.look.Style, saved)
+	}
+	if s := screen(m); !strings.Contains(s, "└  fdev") {
+		t.Errorf("the rail is not drawn after esc:\n%s", s)
 	}
 }
 
