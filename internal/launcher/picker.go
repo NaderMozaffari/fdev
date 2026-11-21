@@ -405,6 +405,12 @@ func (m *Model) animating() bool {
 // ── View ─────────────────────────────────────────────────────────────────────
 
 func (m *Model) pickView() string {
+	switch m.mode() {
+	case config.LauncherLine:
+		return m.pickLine()
+	case config.LauncherList:
+		return m.pickList()
+	}
 	th := m.th
 	m.zones = nil
 	lines := []string{m.header()}

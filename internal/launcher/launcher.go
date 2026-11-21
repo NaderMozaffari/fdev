@@ -390,6 +390,9 @@ func menuRows(size string) (rowH, gap int) {
 
 // sizeFor is the size set, or for auto the biggest that fits.
 func (m *Model) sizeFor(fits func(size string) bool) string {
+	if m.small() {
+		return config.SizeSmall
+	}
 	if m.ui.Size != config.SizeAuto && m.ui.Size != "" {
 		return m.ui.Size
 	}
@@ -404,6 +407,9 @@ func (m *Model) sizeFor(fits func(size string) bool) string {
 // compact is whether the screens leave out their blank lines: for a short
 // window, or the small size.
 func (m *Model) compact() bool {
+	if m.small() {
+		return true
+	}
 	switch m.ui.Size {
 	case config.SizeSmall:
 		return true
