@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NaderMozaffari/fdev/internal/rail"
 	"github.com/NaderMozaffari/fdev/internal/version"
 )
 
@@ -62,6 +63,11 @@ func Asset(goos, goarch string) string {
 }
 
 func Run(o Options) error {
+	title := "fdev update"
+	if o.Switch {
+		title = "fdev channel"
+	}
+	rail.Start(o.Out, title)
 	c := &client{http: &http.Client{Timeout: 5 * time.Minute}, token: token()}
 	api := "https://api.github.com/repos/" + o.Repo + "/releases"
 	var rel release
@@ -87,11 +93,11 @@ func Run(o Options) error {
 		}
 		switch cmp := version.Compare(newest.Tag, o.Current); {
 		case cmp == 0:
-			fmt.Fprintf(o.Out, "fdev %s is the newest %s\n", version.Short(), channel)
+			rail.End(o.Out, fmt.Sprintf("fdev %s is the newest %s", version.Short(), channel))
 			return nil
 		case cmp < 0 && !o.Switch:
-			fmt.Fprintf(o.Out, "fdev %s is newer than the newest %s, %s; `fdev channel %s` goes back to it\n",
-				version.Short(), channel, newest.Tag, channel)
+			rail.Note(o.Out, fmt.Sprintf("the newest %s is %s", channel, newest.Tag))
+			rail.End(o.Out, fmt.Sprintf("fdev %s is newer; `fdev channel %s` goes back to it", version.Short(), channel))
 			return nil
 		}
 		rel = newest
@@ -105,10 +111,14 @@ func Run(o Options) error {
 	if version.Channel(rel.Tag) == version.Beta {
 		note = ", a beta"
 	}
-	fmt.Fprintf(o.Out, "downloading fdev %s (%s%s)...\n", rel.Tag, name, note)
+	rail.Step(o.Out, "Found "+rel.Tag+note)
+	rail.Note(o.Out, "downloading "+name+"…")
 	bin, _, err := c.binary(rel, *archive, sums, nil)
 	if err != nil {
 		return err
+	}
+	if sums != nil {
+		rail.Step(o.Out, "Checksum matches")
 	}
 	exe, err := installed()
 	if err != nil {
@@ -117,7 +127,7 @@ func Run(o Options) error {
 	if err := Replace(exe, bin); err != nil {
 		return err
 	}
-	fmt.Fprintf(o.Out, "fdev %s → %s (%s)\n", version.Short(), rel.Tag, version.Home(exe))
+	rail.End(o.Out, rail.Done("Done:", fmt.Sprintf("fdev %s → %s (%s)", version.Short(), rel.Tag, version.Home(exe))))
 	return nil
 }
 
